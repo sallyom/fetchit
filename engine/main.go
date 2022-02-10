@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 )
 
 type Repo struct {
@@ -30,8 +31,9 @@ func main() {
 		fmt.Printf("git clone %s %s --recursive\n", repo.Url, repo.Branch)
 
 		_, err := git.PlainClone(repo.Directory, false, &git.CloneOptions{
-			URL:        repo.Url,
-			RemoteName: repo.Branch,
+			URL:           repo.Url,
+			ReferenceName: plumbing.NewBranchReferenceName(repo.Branch),
+			SingleBranch:  true,
 		})
 		if err != nil {
 			log.Fatal(err)
