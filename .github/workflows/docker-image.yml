@@ -253,6 +253,70 @@ jobs:
       - name: verify raw container is running
         run: if [[ $(sudo podman ps | grep -v CON= | grep colors | wc -l) = "2" ]] ; then echo "Container successfully launched"; else exit 1; fi
 
+  make-change-to-repo:
+    runs-on: ubuntu-latest
+    needs: [ build ]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Enable the podman socket
+        run: sudo systemctl enable --now podman.socket
+
+      - name: ensure value
+        run: |
+          sed -i "s/APP_COLOR=.*/APP_COLOR=blue/g" ./examples/raw/colors1.json
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ci
+          force: true
+
+      - name: pull artifact
+        uses: actions/download-artifact@v1
+        with:
+          name: harpoon-image
+          path: /tmp
+
+      - name: Load the image
+        run: sudo podman load -i /tmp/harpoon.tar
+
+      - name: Start harpoon
+        run: sudo podman run -d --name harpoon -v harpoon-volume:/opt -v ./examples/examples/ci-config.yaml:/opt/config.yaml -v /run/podman/podman.sock:/run/podman/podman.sock quay.io/harpoon/harpoon-amd:latest
+
+      - name: Wait for harpoon to deploy
+        run: sleep 2m
+
+      - name: Logs
+        run: sudo podman logs harpoon
+
+      - name: get environment variable
+        run: sudo podman exec colors1 env | grep APP_COLOR
+
+      - name: update variable
+        run: |
+          sed -i "s/APP_COLOR: blue/APP_COLOR: pink/g" ./examples/raw/colors1.json
+
+      - name: Commit files
+        run: |
+          git commit -m "Add changes" -a
+    
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ci
+
+      - name: Wait for harpoon to deploy
+        run: sleep 2m
+
+      - name: Logs
+        run: sudo podman logs harpoon
+
+      - name: get environment variable
+        run: sudo podman exec colors1 env | grep APP_COLOR
+
   push-amd-image-to-registry:
     runs-on: ubuntu-latest
     needs: [ build, raw-validate, default-volume-validate, kube-validate, systemd-validate, systemd-validate-exact-file ]
