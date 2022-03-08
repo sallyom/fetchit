@@ -264,7 +264,7 @@ jobs:
 
       - name: ensure value
         run: |
-          sed -i "s/APP_COLOR=.*/APP_COLOR=blue/g" ./examples/raw/color1.json
+          cat <<< $(jq '.Env.APP_COLOR |= "blue"' ./examples/raw/color1.json) > ./examples/raw/color1.json 
 
       - name: Commit files
         run: |
@@ -302,7 +302,8 @@ jobs:
 
       - name: update variable
         run: |
-          sed -i "s/APP_COLOR: blue/APP_COLOR: pink/g" ./examples/raw/color1.json
+          cat <<< $(jq '.Env.APP_COLOR |= "pink"' ./examples/raw/color1.json) > ./examples/raw/color1.json 
+
 
       - name: Commit files
         run: |
