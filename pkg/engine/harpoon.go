@@ -254,12 +254,12 @@ func (hc *HarpoonConfig) processRaw(ctx context.Context, repo *api.Repo, schedul
 		klog.Infof("Repo: %s, Method: %s: Nothing to pull.....Requeuing", repo.Name, rawMethod)
 	}
 
-	targetPath := repo.Target.Raw.Subdirectory
-	if fileName != "" {
-		targetPath = fileName
-	}
+	//targetPath := repo.Target.Raw.Subdirectory
+	//if fileName != "" {
+	//	targetPath = fileName
+	//}
 	for _, change := range changes {
-		if strings.Contains(change.To.Name, targetPath) {
+		if strings.Contains(change.To.Name, repo.Target.Raw.Subdirectory) {
 			path := directory + "/" + change.To.Name
 			if err = hc.EngineMethod(ctx, path, rawMethod, repo); err != nil {
 				log.Fatal(err)
