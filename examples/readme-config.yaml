@@ -1,0 +1,12 @@
+targets:
+- name: harpoon
+  url: http://github.com/redhat-et/harpoon
+  branch: main
+  fileTransfer:
+    targetPath: examples/fileTransfer/hello.txt
+    destinationDirectory: /tmp/filetransfer
+    schedule: "*/1 * * * *" 
+  raw:
+    targetPath: examples/raw
+    schedule: "*/1 * * * *"
+

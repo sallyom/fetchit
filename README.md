@@ -24,8 +24,9 @@ targets:
 - name: harpoon
   url: http://github.com/redhat-et/harpoon
   branch: main
-  systemd:
-    targetPath: examples/systemd/httpd.service
+  fileTransfer:
+    targetPath: examples/fileTransfer/hello.txt
+    destinationDirectory: /tmp/filetransfer
     schedule: "*/1 * * * *" 
   raw:
     targetPath: examples/raw
@@ -42,6 +43,8 @@ CONTAINER ID  IMAGE       COMMAND     CREATED     STATUS      PORTS       NAMES
 Launch the harpoon container using a podman volume.
 
 NOTE: If a podman volume is not the preferred storage solution a directory can be used as well. An example would be `-v ~/harpoon-volume:/opt` instead of `-v harpoon-volume:/opt`.
+
+NOTE: For filetransfer, the `destination directory must exist` on the host.
 
 ```
 podman run -d --name harpoon -v harpoon-volume:/opt -v ./config.json:/opt/config.json -v /run/user/$(id -u)/podman//podman.sock:/run/podman/podman.sock quay.io/harpoon/harpoon:latest
@@ -84,4 +87,9 @@ podman ps
 
 CONTAINER ID  IMAGE                                          COMMAND               CREATED         STATUS             PORTS                   NAMES
 53d86851aad9  docker.io/mmumshad/simple-webapp-color:latest  python ./app.py       53 minutes ago  Up 53 minutes ago  0.0.0.0:8080->8080/tcp  colors
+```
+
+Verify the file was places on the host
+```
+ls -al /tmp/filetransfer/hello.txt
 ```
