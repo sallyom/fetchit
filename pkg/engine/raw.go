@@ -8,7 +8,6 @@ import (
 
 	"github.com/containers/common/libnetwork/types"
 	"github.com/containers/podman/v4/pkg/bindings/containers"
-	"github.com/containers/podman/v4/pkg/bindings/images"
 	"github.com/containers/podman/v4/pkg/specgen"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/redhat-et/harpoon/pkg/engine/utils"
@@ -61,20 +60,24 @@ type RawPod struct {
 }
 
 func rawPodman(ctx context.Context, mo *FileMountOptions, prev *string) error {
-
+	err := FetchImage(mo.Conn, rawPod.Image, raw.PullImage)
+	if err != nil {
+		return err
+	}
 	// Delete previous file's podxz
 	if prev != nil {
 		raw, err := rawPodFromBytes([]byte(*prev))
+		rawPod, err := rawPodFromBytes([]byte(*prev))
 		if err != nil {
 			return err
 		}
 
-		err = deleteContainer(mo.Conn, raw.Name)
+		err = deleteContainer(mo.Conn, rawPod.Name)
 		if err != nil {
 			return err
 		}
 
-		klog.Infof("Deleted podman container %s", raw.Name)
+		klog.Infof("Deleted podman container %s", rawPod.Name)
 	}
 
 	if mo.Path == deleteFile {
@@ -88,24 +91,17 @@ func rawPodman(ctx context.Context, mo *FileMountOptions, prev *string) error {
 		return err
 	}
 
-	raw, err := rawPodFromBytes(rawFile)
+	rawPod, err := rawPodFromBytes(rawFile)
 	if err != nil {
 		return err
 	}
 
-	klog.Infof("Identifying if image exists locally")
-
-	err = detectOrFetchImage(mo.Conn, raw.Image, mo.Target.Raw.PullImage)
+	err = removeExisting(mo.Conn, rawPod.Name)
 	if err != nil {
 		return err
 	}
 
-	err = removeExisting(mo.Conn, raw.Name)
-	if err != nil {
-		return err
-	}
-
-	s := createSpecGen(*raw)
+	s := createSpecGen(*rawPod)
 
 	createResponse, err := containers.CreateWithSpec(mo.Conn, s, nil)
 	if err != nil {
@@ -184,25 +180,6 @@ func deleteContainer(conn context.Context, podName string) error {
 	containers.Remove(conn, podName, new(containers.RemoveOptions).WithForce(true))
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func detectOrFetchImage(conn context.Context, imageName string, force bool) error {
-	// Pull image if it doesn't exist
-	var present bool
-	present, err := images.Exists(conn, imageName, nil)
-	klog.Infof("Is image present? %t", present)
-	if err != nil {
-		return err
-	}
-
-	if !present || force {
-		_, err = images.Pull(conn, imageName, nil)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil

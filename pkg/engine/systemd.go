@@ -9,30 +9,28 @@ import (
 	"github.com/containers/podman/v4/pkg/specgen"
 	"github.com/opencontainers/runtime-spec/specs-go"
 
-	"github.com/redhat-et/harpoon/pkg/engine/utils"
 	"k8s.io/klog/v2"
 )
 
-func systemdPodman(ctx context.Context, mo *FileMountOptions, prev *string, dest string) error {
-	klog.Infof("Deploying systemd file(s) %s", mo.Path)
-	if err := fileTransferPodman(ctx, mo, prev, dest); err != nil {
-		return utils.WrapErr(err, "Error deploying systemd file(s) Repo: %s, Path: %s", mo.Target.Name, mo.Target.Systemd.TargetPath)
+func systemdPodman(ctx context.Context, mo *FileMountOptions, dest string) error {
+	sd := mo.Target.Methods.Systemd
+	if sd.RestartAlways {
+		return enableSystemdService(mo, "restart", dest, filepath.Base(mo.Path))
 	}
-	sd := mo.Target.Systemd
-	if !sd.Enable {
-		klog.Infof("Repo: %s, systemd target successfully processed", mo.Target.Name)
-		return nil
+	if sd.Enable {
+		return enableSystemdService(mo, "enable", dest, filepath.Base(mo.Path))
 	}
-	return enableSystemdService(mo.Conn, sd.Root, dest, filepath.Base(mo.Path), mo.Target.Name)
+	return nil
 }
 
-func enableSystemdService(conn context.Context, root bool, systemdPath, service, repoName string) error {
-	klog.Infof("Identifying if systemd image exists locally")
-	if err := utils.FetchImage(conn, systemdImage); err != nil {
+func enableSystemdService(mo *FileMountOptions, action, dest, service string) error {
+	klog.Infof("Target: %s, running systemctl %s %s", mo.Target.Name, action, service)
+	sd := mo.Target.Methods.Systemd
+	if err := FetchImage(mo.Conn, systemdImage, true); err != nil {
 		return err
 	}
 	os.Setenv("ROOT", "true")
-	if !root {
+	if !sd.Root {
 		//os.Setenv("ROOT", "false")
 		klog.Info("At this time, harpoon non-root user cannot enable systemd service on the host")
 		klog.Infof("To enable this non-root service, run 'systemctl --user enable %s' on host machine", service)
@@ -40,14 +38,13 @@ func enableSystemdService(conn context.Context, root bool, systemdPath, service,
 		return nil
 	}
 
-	os.Setenv("SERVICE", service)
 	s := specgen.NewSpecGenerator(systemdImage, false)
 	runMount := "/run/systemd"
-	if !root {
+	if !sd.Root {
 		runMount = "/run/user/1000/systemd"
 		s.User = "1000"
 	}
-	s.Name = "systemd-enable-" + service + "-" + repoName
+	s.Name = "systemd-" + action + "-" + service + "-" + mo.Target.Name
 	s.Privileged = true
 	s.PidNS = specgen.Namespace{
 		NSMode: "host",
@@ -55,20 +52,20 @@ func enableSystemdService(conn context.Context, root bool, systemdPath, service,
 	}
 
 	envMap := make(map[string]string)
-	envMap["ROOT"] = strconv.FormatBool(root)
+	envMap["ROOT"] = strconv.FormatBool(sd.Root)
 	envMap["SERVICE"] = service
-	envMap["ACTION"] = "enable"
+	envMap["ACTION"] = action
 	s.Env = envMap
-	s.Mounts = []specs.Mount{{Source: systemdPath, Destination: systemdPath, Type: "bind", Options: []string{"rw"}}, {Source: runMount, Destination: runMount, Type: "bind", Options: []string{"rw"}}}
-	createResponse, err := createAndStartContainer(conn, s)
+	s.Mounts = []specs.Mount{{Source: dest, Destination: dest, Type: "bind", Options: []string{"rw"}}, {Source: runMount, Destination: runMount, Type: "bind", Options: []string{"rw"}}}
+	createResponse, err := createAndStartContainer(mo.Conn, s)
 	if err != nil {
 		return err
 	}
 
-	err = waitAndRemoveContainer(conn, createResponse.ID)
+	err = waitAndRemoveContainer(mo.Conn, createResponse.ID)
 	if err != nil {
 		return err
 	}
-	klog.Infof("Repo: %s, systemd target successfully processed", repoName)
+	klog.Infof("Target: %s, systemd %s %s complete", mo.Target.Name, action, service)
 	return nil
 }
