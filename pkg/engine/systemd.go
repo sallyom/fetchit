@@ -15,7 +15,7 @@ import (
 func systemdPodman(ctx context.Context, mo *FileMountOptions, dest string) error {
 	sd := mo.Target.Methods.Systemd
 	if sd.RestartAlways {
-		return enableSystemdService(mo, "enable", dest, filepath.Base(mo.Path))
+		return enableSystemdService(mo, "restart", dest, filepath.Base(mo.Path))
 	}
 	if sd.Enable {
 		return enableSystemdService(mo, "enable", dest, filepath.Base(mo.Path))
@@ -39,7 +39,9 @@ func enableSystemdService(mo *FileMountOptions, action, dest, service string) er
 	}
 
 	s := specgen.NewSpecGenerator(systemdImage, false)
-	runMount := "/run/systemd"
+	runMount := "/run"
+	runMountb := "/lib"
+	runMountc := "/sys/fs/cgroup:/sys/fs/cgroup"
 	if !sd.Root {
 		runMount = "/run/user/1000/systemd"
 		s.User = "1000"
@@ -56,7 +58,7 @@ func enableSystemdService(mo *FileMountOptions, action, dest, service string) er
 	envMap["SERVICE"] = service
 	envMap["ACTION"] = action
 	s.Env = envMap
-	s.Mounts = []specs.Mount{{Source: dest, Destination: dest, Type: "bind", Options: []string{"rw"}}, {Source: runMount, Destination: runMount, Type: "bind", Options: []string{"rw"}}}
+	s.Mounts = []specs.Mount{{Source: dest, Destination: dest, Type: "bind", Options: []string{"rw"}}, {Source: runMount, Destination: runMount, Type: "bind", Options: []string{"rw"}}, {Source: runMountb, Destination: runMountb, Type: "bind", Options: []string{"rw"}}, {Source: runMountc, Destination: runMountc, Type: "bind", Options: []string{"rw"}}}
 	createResponse, err := createAndStartContainer(mo.Conn, s)
 	if err != nil {
 		return err

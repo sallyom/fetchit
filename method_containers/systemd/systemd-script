@@ -2,11 +2,13 @@
 
 if [ "$ACTION" == "enable" ]; then
   if [ "$ROOT" == "true" ]; then
+    systemctl daemon-reload
     systemctl enable "${SERVICE}" --now
     if ! systemctl is-active --quiet "${SERVICE}"; then
       exit 1
     fi
   else
+    systemctl --user daemon-reload
     systemctl --user enable "${SERVICE}" --now
     if ! systemctl --user is-active --quiet "${SERVICE}"; then
       exit 1
@@ -16,20 +18,14 @@ fi
 
 if [ "$ACTION" == "restart" ]; then
   if [ "$ROOT" == "true" ]; then
-    systemctl enable "${SERVICE}"
-    sleep 2
-    systemctl stop "${SERVICE}"
-    sleep 2
-    systemctl enable "${SERVICE}" --now
+    systemctl daemon-reload
+    systemctl restart "${SERVICE}"
     if ! systemctl is-active --quiet "${SERVICE}"; then
       exit 1
     fi
   else
-    systemctl --user enable  "${SERVICE}"
-    sleep 2
-    systemctl --user stop  "${SERVICE}" --now
-    sleep 2
-    systemctl --user enable  "${SERVICE}" --now
+    systemctl --user daemon-reload
+    systemctl --user restart  "${SERVICE}"
     if ! systemctl is-active --quiet "${SERVICE}"; then
       exit 1
     fi
