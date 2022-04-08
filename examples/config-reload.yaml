@@ -3,6 +3,15 @@
 # and for follow-up test, push a change to the config and confirm
 # new targets are fetched & run
 targets:
+- name: microshift
+  url: https://github.com/redhat-et/microshift
+  branch: main
+  methods:
+    systemd:
+      targetPath: packaging/systemd/microshift-aio.service
+      root: true
+      enable: true
+      schedule: "*/1 * * * *"
 - name: harpoon
   url: http://github.com/sallyom/harpoon
   methods:
