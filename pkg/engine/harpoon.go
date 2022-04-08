@@ -381,12 +381,9 @@ func (hc *HarpoonConfig) processRaw(ctx context.Context, target *api.Target) {
 		return
 	}
 
-	if subDirTree == nil {
-		return 
-	}
-
 	targetFile, err := hc.ApplyInitial(ctx, mo, fileName, raw.TargetPath, &tag, subDirTree)
 	if err != nil {
+		klog.Infof("HERE ERROR: %v", err)
 		hc.ResetTarget(target, rawMethod, err)
 		return
 	}
@@ -416,9 +413,6 @@ func (hc *HarpoonConfig) processAnsible(ctx context.Context, target *api.Target,
 	fileName, subDirTree, err := hc.GetPathOrTree(target, ans.TargetPath, ansibleMethod)
 	if err != nil {
 		hc.ResetTarget(target, ansibleMethod, nil)
-		return
-	}
-	if subDirTree == nil {
 		return
 	}
 	targetFile, err := hc.ApplyInitial(ctx, mo, fileName, ans.TargetPath, &tag, subDirTree)
@@ -455,9 +449,6 @@ func (hc *HarpoonConfig) processSystemd(ctx context.Context, target *api.Target,
 		hc.ResetTarget(target, systemdMethod, nil)
 		return
 	}
-	if subDirTree == nil {
-		return
-	}
 	targetFile, err := hc.ApplyInitial(ctx, mo, fileName, sd.TargetPath, &tag, subDirTree)
 	if err != nil {
 		hc.ResetTarget(target, systemdMethod, nil)
@@ -489,9 +480,6 @@ func (hc *HarpoonConfig) processFileTransfer(ctx context.Context, target *api.Ta
 	fileName, subDirTree, err := hc.GetPathOrTree(target, ft.TargetPath, fileTransferMethod)
 	if err != nil {
 		hc.ResetTarget(target, fileTransferMethod, nil)
-		return
-	}
-	if subDirTree == nil {
 		return
 	}
 	targetFile, err := hc.ApplyInitial(ctx, mo, fileName, ft.TargetPath, nil, subDirTree)
@@ -527,9 +515,6 @@ func (hc *HarpoonConfig) processKube(ctx context.Context, target *api.Target, sc
 	fileName, subDirTree, err := hc.GetPathOrTree(target, kube.TargetPath, kubeMethod)
 	if err != nil {
 		hc.ResetTarget(target, kubeMethod, nil)
-		return
-	}
-	if subDirTree == nil {
 		return
 	}
 	targetFile, err := hc.ApplyInitial(ctx, mo, fileName, kube.TargetPath, &tag, subDirTree)
