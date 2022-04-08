@@ -10,8 +10,9 @@ targets:
     systemd:
       targetPath: packaging/systemd/microshift-aio.service
       root: true
+      restartAlways: true
       enable: true
-      schedule: "*/1 * * * *"
+      schedule: "*/30 * * * *"
 - name: harpoon
   url: http://github.com/sallyom/harpoon
   methods:
