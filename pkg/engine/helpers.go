@@ -75,15 +75,14 @@ func downloadUpdateConfigFile(urlStr string) error {
 func compareFiles(newPath, oldPath string) (bool, error) {
 	replace := false
 	oldFile, oldFileErr := ioutil.ReadFile(oldPath)
+	// This happens when starting up with no local config, only $HARPOON_CONFIG_URL
+	// It is noisy to log this error, but if the newFile can't be read, return the errors.
 	if oldFileErr != nil {
-		klog.Warningf("Error reading config file %s", oldPath)
 		replace = true
 	}
 	newFile, newFileErr := ioutil.ReadFile(newPath)
 	if newFileErr != nil {
 		replace = false
-		klog.Warningf("Error reading updated config file, continuing without config updates")
-
 	}
 	if oldFileErr != nil && newFileErr != nil {
 		klog.Warningf("%v, %v", oldFileErr, newFileErr)

@@ -43,9 +43,9 @@ const (
 )
 
 var (
-	DefaultConfigPath     = filepath.Join("/opt", "harpoon", "config.yaml")
-	DefaultConfigNew      = filepath.Join("/opt", "harpoon", "config-new.yaml")
-	DefaultConfigBackup   = filepath.Join("/opt", "harpoon", "config-backup.yaml")
+	DefaultConfigPath     = filepath.Join("/opt", "mount", "config.yaml")
+	DefaultConfigNew      = filepath.Join("/opt", "mount", "config-new.yaml")
+	DefaultConfigBackup   = filepath.Join("/opt", "mount", "config-backup.yaml")
 	DefaultHostConfigPath = filepath.Join(os.Getenv("HOME"), ".harpoon", "config.yaml")
 )
 
@@ -109,12 +109,11 @@ var (
 // and methods with changes will be reset, new targets will be
 // added and stale targets disappear.
 func (hc *HarpoonConfig) Restart() {
-	//harpoonConfig.Scheduler.Stop()
-	harpoonConfig.Scheduler.Clear()
-	harpoonConfig.InitConfig(false)
-	harpoonConfig.GetTargets(false)
-	harpoonConfig.RestartHarpoon = false
-	harpoonConfig.RunTargets()
+	hc.Scheduler.RemoveByTags(kubeMethod, ansibleMethod, fileTransferMethod, systemdMethod, rawMethod)
+	hc.InitConfig(false)
+	hc.GetTargets(false)
+	hc.RestartHarpoon = false
+	hc.RunTargets()
 }
 
 // initconfig reads in config file and env variables if set, and initializes HarpoonConfig.
@@ -147,7 +146,7 @@ func (hc *HarpoonConfig) InitConfig(initial bool) {
 	}
 
 	if len(config.Targets) == 0 {
-		log.Fatalf("no harpoon targets found, exiting")
+		cobra.CheckErr("no harpoon targets found, exiting")
 	}
 	if config.Volume == "" {
 		config.Volume = defaultVolume
@@ -266,37 +265,39 @@ func (hc *HarpoonConfig) RunTargets() {
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 				klog.Infof("Processing Target: %s Method: %s", target.Name, method)
-				s.Cron(schedule).Do(hc.processConfig, ctx, &target, schedule)
+				s.RemoveByTag(configMethod)
+				s.Cron(schedule).Tag(configMethod).Do(hc.processConfig, ctx, &target, schedule)
 			case kubeMethod:
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 				klog.Infof("Processing Target: %s Method: %s", target.Name, method)
-				s.Cron(schedule).Do(hc.processKube, ctx, &target, schedule)
+				s.Cron(schedule).Tag(kubeMethod).Do(hc.processKube, ctx, &target, schedule)
 			case rawMethod:
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 				klog.Infof("Processing Target: %s Method: %s", target.Name, method)
-				s.Cron(schedule).Do(hc.processRaw, ctx, &target, schedule)
+				s.Cron(schedule).Tag(rawMethod).Do(hc.processRaw, ctx, &target, schedule)
 			case systemdMethod:
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 				klog.Infof("Processing Target: %s Method: %s", target.Name, method)
-				s.Cron(schedule).Do(hc.processSystemd, ctx, &target, schedule)
+				s.Cron(schedule).Tag(systemdMethod).Do(hc.processSystemd, ctx, &target, schedule)
 			case fileTransferMethod:
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 				klog.Infof("Processing Target: %s Method: %s", target.Name, method)
-				s.Cron(schedule).Do(hc.processFileTransfer, ctx, &target, schedule)
+				s.Cron(schedule).Tag(fileTransferMethod).Do(hc.processFileTransfer, ctx, &target, schedule)
 			case ansibleMethod:
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 				klog.Infof("Processing Target: %s Method: %s", target.Name, method)
-				s.Cron(schedule).Do(hc.processAnsible, ctx, &target, schedule)
+				s.Cron(schedule).Tag(ansibleMethod).Do(hc.processAnsible, ctx, &target, schedule)
 			default:
 				klog.Warningf("Target: %s Method: %s, unknown method type, ignoring", target.Name, method)
 			}
 		}
 	}
+	s.SingletonModeAll()
 	s.StartAsync()
 	select {}
 }
