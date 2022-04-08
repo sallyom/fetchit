@@ -274,7 +274,7 @@ func (hc *HarpoonConfig) RunTargets() {
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 				klog.Infof("Processing Target: %s Method: %s", target.Name, method)
-				s.Cron(schedule).Tag(rawMethod).Do(hc.processRaw, ctx, &target)
+				s.Cron(schedule).Tag(rawMethod).Do(hc.processRaw, ctx, &target, schedule)
 			case systemdMethod:
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
@@ -381,6 +381,10 @@ func (hc *HarpoonConfig) processRaw(ctx context.Context, target *api.Target) {
 		return
 	}
 
+	if subDirTree == nil {
+		return 
+	}
+
 	targetFile, err := hc.ApplyInitial(ctx, mo, fileName, raw.TargetPath, &tag, subDirTree)
 	if err != nil {
 		hc.ResetTarget(target, rawMethod, err)
@@ -412,6 +416,9 @@ func (hc *HarpoonConfig) processAnsible(ctx context.Context, target *api.Target,
 	fileName, subDirTree, err := hc.GetPathOrTree(target, ans.TargetPath, ansibleMethod)
 	if err != nil {
 		hc.ResetTarget(target, ansibleMethod, nil)
+		return
+	}
+	if subDirTree == nil {
 		return
 	}
 	targetFile, err := hc.ApplyInitial(ctx, mo, fileName, ans.TargetPath, &tag, subDirTree)
@@ -448,6 +455,9 @@ func (hc *HarpoonConfig) processSystemd(ctx context.Context, target *api.Target,
 		hc.ResetTarget(target, systemdMethod, nil)
 		return
 	}
+	if subDirTree == nil {
+		return
+	}
 	targetFile, err := hc.ApplyInitial(ctx, mo, fileName, sd.TargetPath, &tag, subDirTree)
 	if err != nil {
 		hc.ResetTarget(target, systemdMethod, nil)
@@ -479,6 +489,9 @@ func (hc *HarpoonConfig) processFileTransfer(ctx context.Context, target *api.Ta
 	fileName, subDirTree, err := hc.GetPathOrTree(target, ft.TargetPath, fileTransferMethod)
 	if err != nil {
 		hc.ResetTarget(target, fileTransferMethod, nil)
+		return
+	}
+	if subDirTree == nil {
 		return
 	}
 	targetFile, err := hc.ApplyInitial(ctx, mo, fileName, ft.TargetPath, nil, subDirTree)
@@ -514,6 +527,9 @@ func (hc *HarpoonConfig) processKube(ctx context.Context, target *api.Target, sc
 	fileName, subDirTree, err := hc.GetPathOrTree(target, kube.TargetPath, kubeMethod)
 	if err != nil {
 		hc.ResetTarget(target, kubeMethod, nil)
+		return
+	}
+	if subDirTree == nil {
 		return
 	}
 	targetFile, err := hc.ApplyInitial(ctx, mo, fileName, kube.TargetPath, &tag, subDirTree)
@@ -828,7 +844,7 @@ func (hc *HarpoonConfig) GetPathOrTree(target *api.Target, subDir, method string
 			// check if exact filepath
 			file, err := tree.File(subDir)
 			if err == nil {
-				return file.Name, nil, nil
+				return file.Name, subDirTree, nil
 			}
 		}
 	}
