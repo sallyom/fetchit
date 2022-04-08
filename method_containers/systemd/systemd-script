@@ -1,18 +1,14 @@
 #!/usr/bin/env bash 
 
-running="running"
-
 if [ "$ACTION" == "enable" ]; then
   if [ "$ROOT" == "true" ]; then
     systemctl enable "${SERVICE}" --now
-    output=$(systemctl show -p SubState --value "$SERVICE")
-    if [[ $output != "$running" ]]; then
+    if ! systemctl is-active --quiet "${SERVICE}"; then
       exit 1
     fi
   else
     systemctl --user enable "${SERVICE}" --now
-    output=$(systemctl --user show -p SubState --value "$SERVICE")
-    if [[ $output != "$running" ]]; then
+    if ! systemctl --user is-active --quiet "${SERVICE}"; then
       exit 1
     fi
   fi
@@ -20,20 +16,30 @@ fi
 
 if [ "$ACTION" == "restart" ]; then
   if [ "$ROOT" == "true" ]; then
+    systemctl enable "${SERVICE}"
+    sleep 2
     systemctl stop "${SERVICE}"
-    sleep 3
+    sleep 2
     systemctl enable "${SERVICE}" --now
-    output=$(systemctl show -p SubState --value "$SERVICE")
-    if [[ $output != "$running" ]]; then
+    if ! systemctl is-active --quiet "${SERVICE}"; then
       exit 1
     fi
   else
-    systemctl --user stop "${SERVICE}"
-    sleep 3
-    systemctl --user enable "${SERVICE}" --now
-    output=$(systemctl --user show -p SubState --value "$SERVICE")
-    if [[ $output != "$running" ]]; then
+    systemctl --user enable  "${SERVICE}"
+    sleep 2
+    systemctl --user stop  "${SERVICE}" --now
+    sleep 2
+    systemctl --user enable  "${SERVICE}" --now
+    if ! systemctl is-active --quiet "${SERVICE}"; then
       exit 1
     fi
+  fi
+fi
+
+if [ "$ACTION" == "stop" ]; then
+  if [ "$ROOT" == "true" ]; then
+    systemctl stop "${SERVICE}" && rm -rf /etc/systemd/system/"${SERVICE}"
+  else
+    systemctl --user stop "${SERVICE}" && rm -rf /etc/systemd/system/"${SERVICE}"
   fi
 fi

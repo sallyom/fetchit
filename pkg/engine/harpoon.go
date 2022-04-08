@@ -112,7 +112,6 @@ func (hc *HarpoonConfig) Restart() {
 	hc.Scheduler.RemoveByTags(kubeMethod, ansibleMethod, fileTransferMethod, systemdMethod, rawMethod)
 	hc.InitConfig(false)
 	hc.GetTargets(false)
-	hc.RestartHarpoon = false
 	hc.RunTargets()
 }
 
@@ -126,7 +125,7 @@ func (hc *HarpoonConfig) InitConfig(initial bool) {
 	if initial && !isLocalConfig(config, v) {
 		// env var is set from the configTarget.Url in processConfig, if this is not the initial run.
 		envURL := os.Getenv("HARPOON_CONFIG_URL")
-		_ = hc.CheckForConfigUpdates(envURL, initial, false)
+		_ = hc.CheckForConfigUpdates(envURL, false)
 	}
 	// if not initial run, only way to get here is if already determined need for reload
 	defaultConfigPath := DefaultConfigPath
@@ -297,7 +296,6 @@ func (hc *HarpoonConfig) RunTargets() {
 			}
 		}
 	}
-	s.SingletonModeAll()
 	s.StartAsync()
 	select {}
 }
@@ -305,6 +303,7 @@ func (hc *HarpoonConfig) RunTargets() {
 func (hc *HarpoonConfig) processConfig(ctx context.Context, target *api.Target, schedule string) {
 	target.Mu.Lock()
 	defer target.Mu.Unlock()
+	hc.RestartHarpoon = false
 
 	// configUrl in config file will override the environment variable
 	config := target.Methods.ConfigTarget
@@ -320,7 +319,7 @@ func (hc *HarpoonConfig) processConfig(ctx context.Context, target *api.Target, 
 	}
 	// CheckForConfigUpdates downloads & places config file in defaultConfigPath
 	// if the downloaded config file differs from what's currently on the system.
-	hc.RestartHarpoon = hc.CheckForConfigUpdates(envURL, false, true)
+	hc.RestartHarpoon = hc.CheckForConfigUpdates(envURL, true)
 	if !hc.RestartHarpoon {
 		return
 	}
@@ -595,6 +594,7 @@ func (hc *HarpoonConfig) GetChangesAndRunEngine(ctx context.Context, mo *FileMou
 	default:
 		return fmt.Errorf("unknown method: %s", mo.Method)
 	}
+
 	tp := targetPath
 	if mo.Path != "" {
 		tp = mo.Path
@@ -612,11 +612,12 @@ func (hc *HarpoonConfig) GetChangesAndRunEngine(ctx context.Context, mo *FileMou
 	hc.update(mo.Target)
 
 	if len(changesThisMethod) == 0 {
-		if mo.Method == systemdMethod && mo.Target.Methods.Systemd.RestartAlways {
-			if err := hc.EngineMethod(ctx, mo, nil); err != nil {
-				return utils.WrapErr(err, "error method: %s path: %s, commit: %s", mo.Method, mo.Path, newCommit.Hash.String())
-			}
-		} else {
+		//if mo.Method == systemdMethod && mo.Target.Methods.Systemd.RestartAlways {
+		//	mo.Path = filepath.Join(filepath.Base(mo.Target.Url), tp)
+		//	if err := hc.EngineMethod(ctx, mo, nil); err != nil {
+		//		return utils.WrapErr(err, "error method: %s path: %s, commit: %s", mo.Method, mo.Path, newCommit.Hash.String())
+		//	}
+		//} else {
 			klog.Infof("Target: %s, Method: %s: Path: %s, No changes.....Requeuing", mo.Target.Name, mo.Method, tp)
 			return nil
 		}
@@ -652,13 +653,10 @@ func (hc *HarpoonConfig) findDiff(mo *FileMountOptions, targetPath string, commi
 		return thisMethodChanges, nil, fmt.Errorf("error while opening the worktree: %v", err)
 	}
 	var beforeFetchTree *object.Tree
-	if commit != nil {
-		// ... retrieve the tree from this method's last fetched commit
-		beforeFetchTree, _, err = getTree(gitRepo, commit)
-		if err != nil {
-			// TODO: if LastCommit has disappeared, need to reset and set initial=true instead of exit
-			return thisMethodChanges, nil, fmt.Errorf("error checking out last known commit, has branch been force-pushed, commit no longer exists?: %v", err)
-		}
+	// ... retrieve the tree from this method's last fetched commit
+	beforeFetchTree, _, err = getTree(gitRepo, commit)
+	if err != nil {
+		return thisMethodChanges, nil, fmt.Errorf("error checking out last known commit, has branch been force-pushed, commit no longer exists?: %v", err)
 	}
 
 	// Fetch the latest changes from the origin remote and merge into the current branch
@@ -705,6 +703,9 @@ func (hc *HarpoonConfig) findDiff(mo *FileMountOptions, targetPath string, commi
 func (hc *HarpoonConfig) EngineMethod(ctx context.Context, mo *FileMountOptions, change *object.Change) error {
 	switch mo.Method {
 	case rawMethod:
+		if change == nil {
+			return rawPodman(ctx, mo, nil)
+		}
 		prev, err := getChangeString(change)
 		if err != nil {
 			return err
@@ -715,9 +716,9 @@ func (hc *HarpoonConfig) EngineMethod(ctx context.Context, mo *FileMountOptions,
 		// If so, update files on disk with fileTransferPodman.
 		// Updated config file is at /opt/mount/config.yaml in harpoon pod
 		// cp updated config /opt/mount/config.yaml in pod to $HOME/.harpoon/config.yaml on host
-		mo.Dest = DefaultHostConfigPath
+		dest := DefaultHostConfigPath
 		mo.Path = DefaultConfigPath
-		if err := fileTransferPodman(ctx, mo); err != nil {
+		if err := fileTransferPodman(ctx, mo, nil, dest); err != nil {
 			return err
 		}
 		return nil
@@ -736,11 +737,12 @@ func (hc *HarpoonConfig) EngineMethod(ctx context.Context, mo *FileMountOptions,
 		if mo.Target.Methods.Systemd.Root {
 			dest = systemdPathRoot
 		} else {
-			dest = filepath.Join(mo.Target.Systemd.NonRootHomeDir, ".config", "systemd", "user")
+			dest = filepath.Join(nonRootHomeDir, ".config", "systemd", "user")
 		}
-	    klog.Infof("Deploying systemd file(s) %s", mo.Path)
-	    if err := fileTransferPodman(ctx, mo, prev, dest); err != nil {
-		     return utils.WrapErr(err, "Error deploying systemd file(s) Repo: %s, Path: %s", mo.Target.Name, mo.Target.Systemd.TargetPath)
+		klog.Infof("Deploying systemd file(s) %s", mo.Path)
+		if err := fileTransferPodman(ctx, mo, prev, dest); err != nil {
+			return utils.WrapErr(err, "Error deploying systemd file(s) Target: %s, Path: %s", mo.Target.Name, mo.Target.Methods.Systemd.TargetPath)
+		}
 		klog.Infof("Transferring systemd unit file %s", filepath.Base(mo.Path))
 		return systemdPodman(ctx, mo, dest)
 	case fileTransferMethod:
@@ -753,6 +755,9 @@ func (hc *HarpoonConfig) EngineMethod(ctx context.Context, mo *FileMountOptions,
 		dest := mo.Target.Methods.FileTransfer.DestinationDirectory
 		return fileTransferPodman(ctx, mo, prev, dest)
 	case kubeMethod:
+		if change == nil {
+			return kubePodman(ctx, mo, nil)
+		}
 		prev, err := getChangeString(change)
 		if err != nil {
 			return err
@@ -836,7 +841,7 @@ func (hc *HarpoonConfig) ResetTarget(target *api.Target, method string, err erro
 	if err != nil {
 		klog.Warningf("Target: %s Method: %s encountered error: %v, resetting...", target.Name, method, err)
 	}
-	commit, err := hc.getGit(target, true)
+	commit, err := hc.getGit(target)
 	if err != nil {
 		klog.Warningf("Target: %s error fetching commit, will retry next scheduled run: %v", target.Name, err)
 	}
@@ -847,14 +852,9 @@ func (hc *HarpoonConfig) ResetTarget(target *api.Target, method string, err erro
 	hc.update(target)
 }
 
-func (hc *HarpoonConfig) getGit(target *api.Target, initialRun bool) (*object.Commit, error) {
-	if target.Url == "" {
-		return nil, nil
-	}
-	if initialRun {
-		if err := hc.getClone(target); err != nil {
-			return nil, err
-		}
+func (hc *HarpoonConfig) getGit(target *api.Target) (*object.Commit, error) {
+	if err := hc.getClone(target); err != nil {
+		return nil, err
 	}
 	directory := filepath.Base(target.Url)
 	gitRepo, err := git.PlainOpen(directory)
@@ -888,14 +888,13 @@ func (hc *HarpoonConfig) SetLastCommit(target *api.Target, method string, commit
 // in defaultConfigPath in harpoon container (/opt/mount/config.yaml).
 // This runs with the initial startup as well as with scheduled ConfigTarget runs,
 // if $HARPOON_CONFIG_URL is set.
-func (hc *HarpoonConfig) CheckForConfigUpdates(envURL string, initial bool, existsAlready bool) bool {
+func (hc *HarpoonConfig) CheckForConfigUpdates(envURL string, existsAlready bool) bool {
 	if envURL != "" {
 		if err := downloadUpdateConfigFile(envURL); err != nil {
 			klog.Infof("Could not download config: %v", err)
 			return true
 		}
 	}
-	klog.Infof("Downloaded config file")
 	reset := false
 	var err error
 	reset, err = compareFiles(DefaultConfigNew, DefaultConfigPath)

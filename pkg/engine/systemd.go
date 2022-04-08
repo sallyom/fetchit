@@ -15,7 +15,7 @@ import (
 func systemdPodman(ctx context.Context, mo *FileMountOptions, dest string) error {
 	sd := mo.Target.Methods.Systemd
 	if sd.RestartAlways {
-		return enableSystemdService(mo, "restart", dest, filepath.Base(mo.Path))
+		return enableSystemdService(mo, "enable", dest, filepath.Base(mo.Path))
 	}
 	if sd.Enable {
 		return enableSystemdService(mo, "enable", dest, filepath.Base(mo.Path))

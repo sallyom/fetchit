@@ -17,11 +17,11 @@ func ansiblePodman(ctx context.Context, mo *FileMountOptions) error {
 	}
 	klog.Infof("Deploying Ansible playbook %s\n", mo.Path)
 
-	copyFile := ("/opt" + mo.Path)
+	copyFile := ("/opt/" + mo.Path)
 	sshImage := "quay.io/harpoon/harpoon-ansible:latest"
 
 	klog.Infof("Identifying if harpoon-ansible image exists locally")
-	if err := FetchImage(mo.Conn, sshImage, false); err != nil {
+	if err := FetchImage(mo.Conn, sshImage, true); err != nil {
 		return err
 	}
 

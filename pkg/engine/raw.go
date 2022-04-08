@@ -60,24 +60,26 @@ type RawPod struct {
 }
 
 func rawPodman(ctx context.Context, mo *FileMountOptions, prev *string) error {
-	err := FetchImage(mo.Conn, rawPod.Image, raw.PullImage)
-	if err != nil {
-		return err
-	}
+	var image string
 	// Delete previous file's podxz
 	if prev != nil {
-		raw, err := rawPodFromBytes([]byte(*prev))
 		rawPod, err := rawPodFromBytes([]byte(*prev))
 		if err != nil {
 			return err
 		}
 
+		image = rawPod.Image
 		err = deleteContainer(mo.Conn, rawPod.Name)
 		if err != nil {
 			return err
 		}
 
 		klog.Infof("Deleted podman container %s", rawPod.Name)
+	}
+
+	err := FetchImage(mo.Conn, image, mo.Target.Methods.Raw.PullImage)
+	if err != nil {
+		return err
 	}
 
 	if mo.Path == deleteFile {

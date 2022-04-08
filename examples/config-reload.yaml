@@ -10,17 +10,16 @@ targets:
     systemd:
       targetPath: packaging/systemd/microshift-aio.service
       root: true
-      restartAlways: true
       enable: true
-      schedule: "*/30 * * * *"
+      schedule: "*/3 * * * *"
 - name: harpoon
   url: http://github.com/sallyom/harpoon
   methods:
     configTarget:
       configUrl: https://raw.githubusercontent.com/sallyom/harpoon/config-upload/examples/config-reload.yaml
       schedule: "*/1 * * * *"
-    filetransfer:
-      targetPath: examples/filetransfer
-      destinationDirectory: /tmp/new
+    raw:
+      targetPath: examples/raw
       schedule: "*/1 * * * *"
+      pullImage: true
   branch: config-upload
