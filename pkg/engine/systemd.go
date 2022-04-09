@@ -41,7 +41,7 @@ func enableSystemdService(mo *FileMountOptions, action, dest, service string) er
 	s := specgen.NewSpecGenerator(systemdImage, false)
 	runMount := "/run"
 	runMountb := "/lib"
-	runMountc := "/sys/fs/cgroup:/sys/fs/cgroup"
+	runMountc := "/sys/fs/cgroup"
 	if !sd.Root {
 		runMount = "/run/user/1000/systemd"
 		s.User = "1000"

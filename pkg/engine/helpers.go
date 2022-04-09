@@ -22,7 +22,7 @@ import (
 )
 
 func isLocalConfig(config *HarpoonConfig, v *viper.Viper) bool {
-	if _, err := os.Stat(DefaultConfigPath); err != nil {
+	if _, err := os.Stat(defaultConfigPath); err != nil {
 		klog.Infof("Local config file not found: %v", err)
 		return false
 	}
@@ -41,11 +41,11 @@ func downloadUpdateConfigFile(urlStr string) error {
 		// TODO: reset instead
 		return fmt.Errorf("unable to parse config file url %s: %v", urlStr, err)
 	}
-	err = os.MkdirAll(filepath.Dir(DefaultConfigNew), 0600)
+	err = os.MkdirAll(filepath.Dir(defaultConfigNew), 0600)
 	if err != nil {
 		return err
 	}
-	file, err := os.Create(DefaultConfigNew)
+	file, err := os.Create(defaultConfigNew)
 	if err != nil {
 		return err
 	}
@@ -65,35 +65,8 @@ func downloadUpdateConfigFile(urlStr string) error {
 		return err
 	}
 	defer file.Close()
-	klog.Infof("Config from %s placed at %s", urlStr, DefaultConfigNew)
+	klog.Infof("Config from %s placed at %s", urlStr, defaultConfigNew)
 	return nil
-}
-
-// compareFiles returns true if either cannot read oldFile or newFile is not identical
-// if newFile cannot be read or is identical to oldFile, returns false
-// otherwise, returns error
-func compareFiles(newPath, oldPath string) (bool, error) {
-	replace := false
-	oldFile, oldFileErr := ioutil.ReadFile(oldPath)
-	// This happens when starting up with no local config, only $HARPOON_CONFIG_URL
-	// It is noisy to log this error, but if the newFile can't be read, return the errors.
-	if oldFileErr != nil {
-		replace = true
-	}
-	newFile, newFileErr := ioutil.ReadFile(newPath)
-	if newFileErr != nil {
-		replace = false
-	}
-	if oldFileErr != nil && newFileErr != nil {
-		klog.Warningf("%v, %v", oldFileErr, newFileErr)
-		return false, fmt.Errorf("error fetching config updates: %v, %v", oldFileErr, newFileErr)
-	}
-	if oldFileErr == nil && newFileErr == nil {
-		if !bytes.Equal(oldFile, newFile) || replace {
-			return true, nil
-		}
-	}
-	return replace, nil
 }
 
 func getChangeString(change *object.Change) (*string, error) {
@@ -151,6 +124,33 @@ func getTree(r *git.Repository, oldCommit *object.Commit) (*object.Tree, *object
 		return nil, nil, fmt.Errorf("error when retrieving tree: %s", err)
 	}
 	return tree, newCommit, nil
+}
+
+// CompareFiles returns true if either cannot read oldFile or newFile is not identical
+// if newFile cannot be read or is identical to oldFile, returns false
+// otherwise, returns error
+func CompareFiles(newPath, oldPath string) (bool, error) {
+	replace := false
+	oldFile, oldFileErr := ioutil.ReadFile(oldPath)
+	// This happens when starting up with no local config, only $HARPOON_CONFIG_URL
+	// It is noisy to log this error, but if the newFile can't be read, return the errors.
+	if oldFileErr != nil {
+		replace = true
+	}
+	newFile, newFileErr := ioutil.ReadFile(newPath)
+	if newFileErr != nil {
+		replace = false
+	}
+	if oldFileErr != nil && newFileErr != nil {
+		klog.Warningf("%v, %v", oldFileErr, newFileErr)
+		return false, fmt.Errorf("error fetching config updates: %v, %v", oldFileErr, newFileErr)
+	}
+	if oldFileErr == nil && newFileErr == nil {
+		if !bytes.Equal(oldFile, newFile) || replace {
+			return true, nil
+		}
+	}
+	return replace, nil
 }
 
 // CopyFile takes contents of file and places at newPath

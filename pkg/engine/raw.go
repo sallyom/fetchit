@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 
 	"github.com/containers/common/libnetwork/types"
+	"github.com/containers/podman/v4/libpod/define"
 	"github.com/containers/podman/v4/pkg/bindings/containers"
 	"github.com/containers/podman/v4/pkg/specgen"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -70,7 +71,7 @@ func rawPodman(ctx context.Context, mo *FileMountOptions, prev *string) error {
 
 		image = rawPod.Image
 		err = deleteContainer(mo.Conn, rawPod.Name)
-		if err != nil {
+		if err != nil && err != define.ErrNoSuchCtr {
 			return err
 		}
 
