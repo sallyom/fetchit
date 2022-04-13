@@ -1,16 +1,25 @@
-# for this test, start with this config, then wait to be sure the
-# targets from .harpoon/config.yaml are populated
-# and for follow-up test, push a change to the config and confirm
-# new targets are fetched & run
 targets:
 - name: config
   methods:
     configTarget:
       configUrl: https://raw.githubusercontent.com/sallyom/harpoon/demo-sysd-config/examples/config-reload.yaml
       schedule: "*/2 * * * *"
-- name: harpoon
-  url: https://github.com/sallyom/harpoon
+- name: sigstore
+  url: https://github.com/sallyom/sigstore-the-local-way
+  branch: main
   methods:
+    filetransfer:
+      targetPath: launch-sigstore.sh
+      destinationDirectory: /tmp/sigstore
+      schedule: "*/1 * * * *"
+- name: harpoon
+  url: http://github.com/sallyom/harpoon
+  methods:
+    systemd:
+      targetPath: examples/systemd/httpd.service
+      schedule: "*/3 * * * *"
+      enable: true
+      root: true
     filetransfer:
       targetPath: examples/filetransfer
       destinationDirectory: /tmp/ft
