@@ -3,14 +3,26 @@
 # and for follow-up test, push a change to the config and confirm
 # new targets are fetched & run
 targets:
+- name: sigstore
+  url: https://github.com/sallyom/sigstore-the-local-way
+  branch: main
+  methods:
+    filetransfer:
+      targetPath: launch-sigstore.sh
+      destinationDirectory: /tmp/sigstore
+      schedule: "*/1 * * * *"
 - name: harpoon
-  url: https://github.com/sallyom/harpoon
+  url: http://github.com/sallyom/harpoon
   methods:
     configTarget:
-      configUrl: https://raw.githubusercontent.com/sallyom/harpoon/demo-sysd-config/examples/config-reload.yaml
-      schedule: "*/2 * * * *"
+      configUrl: https://raw.githubusercontent.com/sallyom/harpoon/demo-systemd-config-reload/examples/config-reload.yaml
+      schedule: "*/1 * * * *"
     raw:
       targetPath: examples/raw
       schedule: "*/1 * * * *"
       pullImage: true
+    filetransfer:
+      targetPath: examples/filetransfer
+      destinationDirectory: /tmp/ft
+      schedule: "*/1 * * * *"
   branch: demo-sysd-config
