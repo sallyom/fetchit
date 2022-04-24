@@ -14,15 +14,17 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const podmanAutoUpdateService = "podman-auto-update.service"
+
 func systemdPodman(ctx context.Context, mo *SingleMethodObj, path, dest string, prev *string) error {
 	klog.Infof("Deploying systemd file(s) %s", path)
 	sd := mo.Target.Methods.Systemd
-	if mo.Target.Methods.Systemd.initialRun {
+	if mo.Target.Methods.Systemd.initialRun && path != "" {
 		if err := fileTransferPodman(ctx, mo, path, dest, prev); err != nil {
 			return utils.WrapErr(err, "Error deploying systemd file(s) Target: %s, Path: %s", mo.Target.Name, sd.TargetPath)
 		}
 	}
-	if !sd.Enable {
+	if !sd.Enable && !sd.AutoUpdateAll {
 		klog.Infof("Target: %s, systemd target successfully processed", mo.Target.Name)
 		return nil
 	}
@@ -30,6 +32,9 @@ func systemdPodman(ctx context.Context, mo *SingleMethodObj, path, dest string, 
 		if sd.Enable {
 			return enableRestartSystemdService(mo, "enable", dest, filepath.Base(path))
 		}
+	}
+	if sd.AutoUpdateAll && mo.Target.Methods.Systemd.initialRun {
+		return enableRestartSystemdService(mo, "autoupdate", dest, podmanAutoUpdateService)
 	}
 	if sd.Restart {
 		return enableRestartSystemdService(mo, "restart", dest, filepath.Base(path))
@@ -40,9 +45,11 @@ func systemdPodman(ctx context.Context, mo *SingleMethodObj, path, dest string, 
 func enableRestartSystemdService(mo *SingleMethodObj, action, dest, service string) error {
 	klog.Infof("Target: %s, running systemctl %s %s", mo.Target.Name, action, service)
 	sd := mo.Target.Methods.Systemd
-	if err := detectOrFetchImage(mo.Conn, systemdImage, true); err != nil {
+	if err := detectOrFetchImage(mo.Conn, systemdImage, false); err != nil {
 		return err
 	}
+
+	// TODO: remove
 	os.Setenv("ROOT", "true")
 	if !sd.Root {
 		//os.Setenv("ROOT", "false")
@@ -66,13 +73,17 @@ func enableRestartSystemdService(mo *SingleMethodObj, action, dest, service stri
 		NSMode: "host",
 		Value:  "",
 	}
-
+	if action == "autoupdate" {
+		action = "enable"
+		s.Mounts = []specs.Mount{{Source: podmanAutoUpdatePath, Destination: podmanAutoUpdatePath, Type: define.TypeBind, Options: []string{"ro"}}, {Source: dest, Destination: dest, Type: define.TypeBind, Options: []string{"rw"}}, {Source: runMounttmp, Destination: runMounttmp, Type: define.TypeTmpfs, Options: []string{"rw"}}, {Source: runMountc, Destination: runMountc, Type: define.TypeBind, Options: []string{"ro"}}, {Source: runMountsd, Destination: runMountsd, Type: define.TypeBind, Options: []string{"rw"}}}
+	} else {
+		s.Mounts = []specs.Mount{{Source: dest, Destination: dest, Type: define.TypeBind, Options: []string{"rw"}}, {Source: runMounttmp, Destination: runMounttmp, Type: define.TypeTmpfs, Options: []string{"rw"}}, {Source: runMountc, Destination: runMountc, Type: define.TypeBind, Options: []string{"ro"}}, {Source: runMountsd, Destination: runMountsd, Type: define.TypeBind, Options: []string{"rw"}}}
+	}
 	envMap := make(map[string]string)
 	envMap["ROOT"] = strconv.FormatBool(sd.Root)
 	envMap["SERVICE"] = service
 	envMap["ACTION"] = action
 	s.Env = envMap
-	s.Mounts = []specs.Mount{{Source: dest, Destination: dest, Type: define.TypeBind, Options: []string{"rw"}}, {Source: runMounttmp, Destination: runMounttmp, Type: define.TypeTmpfs, Options: []string{"rw"}}, {Source: runMountc, Destination: runMountc, Type: define.TypeBind, Options: []string{"ro"}}, {Source: runMountsd, Destination: runMountsd, Type: define.TypeBind, Options: []string{"rw"}}}
 	createResponse, err := createAndStartContainer(mo.Conn, s)
 	if err != nil {
 		return err

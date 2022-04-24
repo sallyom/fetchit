@@ -29,14 +29,15 @@ const (
 	harpoonImage   = "quay.io/harpoon/harpoon:latest"
 	systemdImage   = "quay.io/harpoon/harpoon-systemd-amd:latest"
 
-	configMethod       = "config"
-	rawMethod          = "raw"
-	systemdMethod      = "systemd"
-	kubeMethod         = "kube"
-	fileTransferMethod = "filetransfer"
-	ansibleMethod      = "ansible"
-	deleteFile         = "delete"
-	systemdPathRoot    = "/etc/systemd/system"
+	configMethod         = "config"
+	rawMethod            = "raw"
+	systemdMethod        = "systemd"
+	kubeMethod           = "kube"
+	fileTransferMethod   = "filetransfer"
+	ansibleMethod        = "ansible"
+	deleteFile           = "delete"
+	systemdPathRoot      = "/etc/systemd/system"
+	podmanAutoUpdatePath = "/usr/lib/systemd/system"
 )
 
 var (
@@ -256,7 +257,7 @@ func (hc *HarpoonConfig) InitConfig(initial bool) {
 	}
 }
 
-// getTargets returns map of repoName to map of method:Schedule
+// GetTargets returns map of repoName to map of method:Schedule
 func (hc *HarpoonConfig) GetTargets() {
 	for _, target := range hc.Targets {
 		target.mu.Lock()
@@ -276,6 +277,10 @@ func (hc *HarpoonConfig) GetTargets() {
 		if target.Methods.Systemd != nil {
 			target.Methods.Systemd.initialRun = true
 			schedMethods[systemdMethod] = target.Methods.Systemd.Schedule
+			// for autoUpdate, autoupdate service is enabled on initialRun regardless of schedule
+			if target.Methods.Systemd.Schedule == "" && target.Methods.Systemd.AutoUpdateAll {
+				schedMethods[systemdMethod] = "*/1 * * * *"
+			}
 		}
 		if target.Methods.FileTransfer != nil {
 			target.Methods.FileTransfer.initialRun = true
@@ -468,6 +473,13 @@ func (hc *HarpoonConfig) processSystemd(ctx context.Context, target *Target) {
 	defer target.mu.Unlock()
 
 	sd := target.Methods.Systemd
+	if sd.AutoUpdateAll {
+		sd.Enable = false
+		target.Url = ""
+		sd.Root = true
+		sd.TargetPath = ""
+		sd.Restart = false
+	}
 	initial := sd.initialRun
 	var targetFile string
 	mo := &SingleMethodObj{
@@ -481,6 +493,12 @@ func (hc *HarpoonConfig) processSystemd(ctx context.Context, target *Target) {
 	}
 	var path string
 	if initial {
+		if sd.AutoUpdateAll {
+			if err := hc.EngineMethod(ctx, mo, "", nil); err != nil {
+				klog.Infof("Failed to start podman-auto-update.service: %v", err)
+				return
+			}
+		}
 		retry := hc.resetTarget(target, systemdMethod, true, nil)
 		if retry {
 			return
@@ -669,7 +687,7 @@ func (hc *HarpoonConfig) getChangesAndRunEngine(ctx context.Context, mo *SingleM
 	hc.update(mo.Target)
 
 	if len(changesThisMethod) == 0 {
-		if mo.Method == systemdMethod && mo.Target.Methods.Systemd.Restart {
+		if mo.Method == systemdMethod && mo.Target.Methods.Systemd.Restart && !mo.Target.Methods.Systemd.initialRun {
 			return hc.EngineMethod(ctx, mo, filepath.Base(mo.Target.Methods.Systemd.TargetPath), nil)
 		}
 		klog.Infof("Target: %s, Method: %s: Nothing to pull.....Requeuing", mo.Target.Name, mo.Method)
