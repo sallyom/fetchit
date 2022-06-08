@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/containers/fetchit/pkg/engine/utils"
 	"github.com/go-co-op/gocron"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -72,6 +73,25 @@ func (m *DefaultMethod) Apply(ctx context.Context, conn context.Context, target 
 }
 
 func (m *DefaultMethod) MethodEngine(ctx context.Context, conn context.Context, change *object.Change, path string) error {
+	return nil
+}
+
+func (m *DefaultMethod) runChangesConcurrent(ctx context.Context, conn context.Context, changeMap map[*object.Change]string) error {
+	ch := make(chan error)
+	for change, changePath := range changeMap {
+		go func(ch chan<- error, changePath string, change *object.Change) {
+			if err := m.MethodEngine(ctx, conn, change, changePath); err != nil {
+				ch <- utils.WrapErr(err, "error running engine method for change from: %s to %s", change.From.Name, change.To.Name)
+			}
+			ch <- nil
+		}(ch, changePath, change)
+	}
+	for range changeMap {
+		err := <-ch
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

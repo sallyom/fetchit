@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/containers/fetchit/pkg/engine/utils"
 	"github.com/containers/podman/v4/pkg/bindings/containers"
 	"github.com/containers/podman/v4/pkg/specgen"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -81,25 +80,6 @@ func (ans *Ansible) Apply(ctx, conn context.Context, target *Target, currentStat
 	}
 	if err := ans.runChangesConcurrent(ctx, conn, changeMap); err != nil {
 		return err
-	}
-	return nil
-}
-
-func (ans *Ansible) runChangesConcurrent(ctx context.Context, conn context.Context, changeMap map[*object.Change]string) error {
-	ch := make(chan error)
-	for change, changePath := range changeMap {
-		go func(ch chan<- error, changePath string, change *object.Change) {
-			if err := ans.MethodEngine(ctx, conn, change, changePath); err != nil {
-				ch <- utils.WrapErr(err, "error running engine method for change from: %s to %s", change.From.Name, change.To.Name)
-			}
-			ch <- nil
-		}(ch, changePath, change)
-	}
-	for range changeMap {
-		err := <-ch
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }

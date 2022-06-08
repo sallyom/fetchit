@@ -162,25 +162,6 @@ func (sd *Systemd) Apply(ctx, conn context.Context, target *Target, currentState
 	return nil
 }
 
-func (sd *Systemd) runChangesConcurrent(ctx context.Context, conn context.Context, changeMap map[*object.Change]string) error {
-	ch := make(chan error)
-	for change, changePath := range changeMap {
-		go func(ch chan<- error, changePath string, change *object.Change) {
-			if err := sd.MethodEngine(ctx, conn, change, changePath); err != nil {
-				ch <- utils.WrapErr(err, "error running engine method for change from: %s to %s", change.From.Name, change.To.Name)
-			}
-			ch <- nil
-		}(ch, changePath, change)
-	}
-	for range changeMap {
-		err := <-ch
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (sd *Systemd) systemdPodman(ctx context.Context, conn context.Context, path, dest string, prev *string) error {
 	klog.Infof("Deploying systemd file(s) %s", path)
 	if sd.AutoUpdateAll {

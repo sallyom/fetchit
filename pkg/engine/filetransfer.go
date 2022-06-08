@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/containers/fetchit/pkg/engine/utils"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"k8s.io/klog/v2"
@@ -84,25 +83,6 @@ func (ft *FileTransfer) Apply(ctx, conn context.Context, target *Target, current
 	}
 	if err := ft.runChangesConcurrent(ctx, conn, changeMap); err != nil {
 		return err
-	}
-	return nil
-}
-
-func (ft *FileTransfer) runChangesConcurrent(ctx context.Context, conn context.Context, changeMap map[*object.Change]string) error {
-	ch := make(chan error)
-	for change, changePath := range changeMap {
-		go func(ch chan<- error, changePath string, change *object.Change) {
-			if err := ft.MethodEngine(ctx, conn, change, changePath); err != nil {
-				ch <- utils.WrapErr(err, "error running engine method for change from: %s to %s", change.From.Name, change.To.Name)
-			}
-			ch <- nil
-		}(ch, changePath, change)
-	}
-	for range changeMap {
-		err := <-ch
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
