@@ -32,12 +32,12 @@ type Kube struct {
 	CommonMethod `mapstructure:",squash"`
 }
 
-func (m *Kube) GetKind() string {
+func (m *Kube) Type() string {
 	return kubeMethod
 }
 
 func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := k.GetTarget()
+	target := k.Target()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()

@@ -29,7 +29,7 @@ type ConfigReload struct {
 	ConfigURL    string `mapstructure:"configURL"`
 }
 
-func (m *ConfigReload) GetKind() string {
+func (m *ConfigReload) Type() string {
 	return configFileMethod
 }
 

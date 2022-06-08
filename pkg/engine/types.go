@@ -14,9 +14,9 @@ import (
 
 type Method interface {
 	GetName() string
-	GetTargetPath() string
-	GetKind() string
-	GetTarget() *Target
+	TargetPath() string
+	Type() string
+	Target() *Target
 	SetTarget(*Target)
 	SetInitialRun(bool)
 	SchedInfo() SchedInfo
@@ -51,11 +51,11 @@ func (m *CommonMethod) SchedInfo() SchedInfo {
 	}
 }
 
-func (m *CommonMethod) GetTargetPath() string {
+func (m *CommonMethod) TargetPath() string {
 	return m.TargetPath
 }
 
-func (m *CommonMethod) GetTarget() *Target {
+func (m *CommonMethod) Target() *Target {
 	return m.target
 }
 
@@ -79,7 +79,7 @@ func currentToLatest(ctx, conn context.Context, m Method, target *Target, tag *[
 	}
 
 	if latest != current {
-		err = m.Apply(ctx, conn, target, current, latest, m.GetTargetPath(), tag)
+		err = m.Apply(ctx, conn, target, current, latest, m.TargetPath(), tag)
 		if err != nil {
 			return fmt.Errorf("Failed to apply changes: %v", err)
 		}
@@ -87,7 +87,7 @@ func currentToLatest(ctx, conn context.Context, m Method, target *Target, tag *[
 		updateCurrent(ctx, target, latest, systemdMethod, m.GetName())
 		klog.Infof("Moved systemd %s from %s to %s for target %s", m.GetName(), current, latest, target.Name)
 	} else {
-		klog.Infof("No changes applied to target %s this run, %s currently at %s", target.Name, m.GetKind(), current)
+		klog.Infof("No changes applied to target %s this run, %s currently at %s", target.Name, m.Type(), current)
 	}
 
 	return nil

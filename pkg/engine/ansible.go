@@ -22,13 +22,13 @@ type Ansible struct {
 	SshDirectory string `mapstructure:"sshDirectory"`
 }
 
-func (m *Ansible) GetKind() string {
+func (m *Ansible) Type() string {
 	return ansibleMethod
 }
 
 func (ans *Ansible) Process(ctx, conn context.Context, PAT string, skew int) {
 	time.Sleep(time.Duration(skew) * time.Millisecond)
-	target := ans.GetTarget()
+	target := ans.Target()
 	target.mu.Lock()
 	defer target.mu.Unlock()
 

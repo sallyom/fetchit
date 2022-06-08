@@ -20,7 +20,7 @@ type Clean struct {
 	All          bool `mapstructure:"all"`
 }
 
-func (m *Clean) GetKind() string {
+func (m *Clean) Type() string {
 	return cleanMethod
 }
 

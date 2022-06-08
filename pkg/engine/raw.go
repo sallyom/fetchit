@@ -28,7 +28,7 @@ type Raw struct {
 	PullImage bool `mapstructure:"pullImage"`
 }
 
-func (m *Raw) GetKind() string {
+func (m *Raw) Type() string {
 	return rawMethod
 }
 
@@ -81,7 +81,7 @@ type RawPod struct {
 
 func (r *Raw) Process(ctx context.Context, conn context.Context, PAT string, skew int) {
 	time.Sleep(time.Duration(skew) * time.Millisecond)
-	target := r.GetTarget()
+	target := r.Target()
 	target.mu.Lock()
 	defer target.mu.Unlock()
 

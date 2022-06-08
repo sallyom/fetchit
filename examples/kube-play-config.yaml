@@ -1,7 +1,6 @@
 targetConfigs:
 - name: fetchit
   url: http://github.com/containers/fetchit
-  methods:
   kube:
   - name: kube-ex
     targetPath: examples/kube/

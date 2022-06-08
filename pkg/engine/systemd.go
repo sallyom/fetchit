@@ -51,7 +51,7 @@ type Systemd struct {
 	Enable bool `mapstructure:"enable"`
 }
 
-func (m *Systemd) GetKind() string {
+func (m *Systemd) Type() string {
 	return systemdMethod
 }
 
@@ -67,7 +67,7 @@ func (sd *Systemd) SchedInfo() SchedInfo {
 }
 
 func (sd *Systemd) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := sd.GetTarget()
+	target := sd.Target()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()
