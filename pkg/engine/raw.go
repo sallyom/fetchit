@@ -203,25 +203,6 @@ func (r *Raw) Apply(ctx, conn context.Context, target *Target, currentState, des
 	return nil
 }
 
-func (r *Raw) runChangesConcurrent(ctx context.Context, conn context.Context, changeMap map[*object.Change]string) error {
-	ch := make(chan error)
-	for change, changePath := range changeMap {
-		go func(ch chan<- error, changePath string, change *object.Change) {
-			if err := r.MethodEngine(ctx, conn, change, changePath); err != nil {
-				ch <- utils.WrapErr(err, "error running engine method for change from: %s to %s", change.From.Name, change.To.Name)
-			}
-			ch <- nil
-		}(ch, changePath, change)
-	}
-	for range changeMap {
-		err := <-ch
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func convertMounts(mounts []mount) []specs.Mount {
 	result := []specs.Mount{}
 	for _, m := range mounts {
