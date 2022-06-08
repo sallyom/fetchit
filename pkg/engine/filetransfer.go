@@ -15,39 +15,13 @@ const filetransferMethod = "filetransfer"
 
 // FileTransfer to place files on host system
 type FileTransfer struct {
-	// Name must be unique within target FileTransfer methods
-	Name string `mapstructure:"name"`
-	// Schedule is how often to check for git updates and/or restart the fetchit service
-	// Must be valid cron expression
-	Schedule string `mapstructure:"schedule"`
-	// Number of seconds to skew the schedule by
-	Skew *int `mapstructure:"skew"`
-	// Where in the git repository to fetch a file or directory (to fetch all files in directory)
-	TargetPath string `mapstructure:"targetPath"`
+	DefaultMethod `mapstructure:",squash"`
 	// Directory path on the host system in which the target files should be placed
 	DestinationDirectory string `mapstructure:"destinationDirectory"`
-	// initialRun is set by fetchit
-	initialRun bool
-	target     *Target
 }
 
 func (ft *FileTransfer) Type() string {
 	return filetransferMethod
-}
-
-func (ft *FileTransfer) GetName() string {
-	return ft.Name
-}
-
-func (ft *FileTransfer) SchedInfo() SchedInfo {
-	return SchedInfo{
-		schedule: ft.Schedule,
-		skew:     ft.Skew,
-	}
-}
-
-func (ft *FileTransfer) Target() *Target {
-	return ft.target
 }
 
 func (ft *FileTransfer) Process(ctx, conn context.Context, PAT string, skew int) {

@@ -29,37 +29,11 @@ const kubeMethod = "kube"
 
 // Kube to launch pods using podman kube-play
 type Kube struct {
-	// Name must be unique within target Kube methods
-	Name string `mapstructure:"name"`
-	// Schedule is how often to check for git updates and/or restart the fetchit service
-	// Must be valid cron expression
-	Schedule string `mapstructure:"schedule"`
-	// Number of seconds to skew the schedule by
-	Skew *int `mapstructure:"skew"`
-	// Where in the git repository to fetch a file or directory (to fetch all files in directory)
-	TargetPath string `mapstructure:"targetPath"`
-	// initialRun is set by fetchit
-	initialRun bool
-	target     *Target
+	DefaultMethod `mapstructure:",squash"`
 }
 
 func (k *Kube) Type() string {
 	return kubeMethod
-}
-
-func (k *Kube) GetName() string {
-	return k.Name
-}
-
-func (k *Kube) SchedInfo() SchedInfo {
-	return SchedInfo{
-		schedule: k.Schedule,
-		skew:     k.Skew,
-	}
-}
-
-func (k *Kube) Target() *Target {
-	return k.target
 }
 
 func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {

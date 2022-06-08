@@ -1,8 +1,9 @@
 targetConfigs:
 - name: fetchit
   url: https://github.com/containers/fetchit
-  systemd:
-  - name: httpd-user
+  methods:
+  - kind: systemd
+    name: httpd-user
     targetPath: examples/systemd/httpd.service
     root: false
     enable: true

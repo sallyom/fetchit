@@ -18,39 +18,13 @@ const ansibleMethod = "ansible"
 
 // Ansible to place and run ansible playbooks
 type Ansible struct {
-	// Name must be unique within a target
-	Name string `mapstructure:"name"`
-	// Where in the git repository to fetch a file or directory (to fetch all files in directory)
-	TargetPath string `mapstructure:"targetPath"`
-	// Schedule is how often to check for git updates with the target files
-	// Must be valid cron expression
-	Schedule string `mapstructure:"schedule"`
-	// Number of seconds to skew the schedule by
-	Skew *int `mapstructure:"skew"`
+	DefaultMethod `mapstructure:",squash"`
 	// SshDirectory for ansible to connect to host
 	SshDirectory string `mapstructure:"sshDirectory"`
-	// initialRun is set by fetchit
-	initialRun bool
-	target     *Target
 }
 
 func (a *Ansible) Type() string {
 	return ansibleMethod
-}
-
-func (a *Ansible) GetName() string {
-	return a.Name
-}
-
-func (a *Ansible) Target() *Target {
-	return a.target
-}
-
-func (a *Ansible) SchedInfo() SchedInfo {
-	return SchedInfo{
-		schedule: a.Schedule,
-		skew:     a.Skew,
-	}
 }
 
 func (ans *Ansible) Process(ctx, conn context.Context, PAT string, skew int) {

@@ -15,13 +15,9 @@ const cleanMethod = "clean"
 
 // Clean configures targets to run a system prune periodically
 type Clean struct {
-	// Schedule is how often to check for git updates and/or restart the fetchit service
-	// Must be valid cron expression
-	Schedule string `mapstructure:"schedule"`
-	// Number of seconds to skew the schedule by
-	Skew    *int `mapstructure:"skew"`
-	Volumes bool `mapstructure:"volumes"`
-	All     bool `mapstructure:"all"`
+	DefaultMethod `mapstructure:",squash"`
+	Volumes       bool `mapstructure:"volumes"`
+	All           bool `mapstructure:"all"`
 }
 
 func (c *Clean) Type() string {
@@ -32,17 +28,14 @@ func (c *Clean) GetName() string {
 	return cleanMethod
 }
 
-func (c *Clean) SchedInfo() SchedInfo {
-	return SchedInfo{
-		schedule: c.Schedule,
-		skew:     c.Skew,
-	}
-}
-
 func (c *Clean) Target() *Target {
 	return &Target{
 		Name: cleanMethod,
 	}
+}
+
+func (c *Clean) SetTarget(t *Target) {
+	return
 }
 
 func (c *Clean) Process(ctx, conn context.Context, PAT string, skew int) {

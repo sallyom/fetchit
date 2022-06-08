@@ -23,39 +23,13 @@ const rawMethod = "raw"
 
 // Raw to deploy pods from json or yaml files
 type Raw struct {
-	// Name must be unique within target Raw methods
-	Name string `mapstructure:"name"`
-	// Schedule is how often to check for git updates and/or restart the fetchit service
-	// Must be valid cron expression
-	Schedule string `mapstructure:"schedule"`
-	// Number of seconds to skew the schedule by
-	Skew *int `mapstructure:"skew"`
-	// Where in the git repository to fetch a file or directory (to fetch all files in directory)
-	TargetPath string `mapstructure:"targetPath"`
+	DefaultMethod `mapstructure:",squash"`
 	// Pull images configured in target files each time regardless of if it already exists
 	PullImage bool `mapstructure:"pullImage"`
-	// initialRun is set by fetchit
-	initialRun bool
-	target     *Target
 }
 
 func (r *Raw) Type() string {
 	return rawMethod
-}
-
-func (r *Raw) GetName() string {
-	return r.Name
-}
-
-func (r *Raw) SchedInfo() SchedInfo {
-	return SchedInfo{
-		schedule: r.Schedule,
-		skew:     r.Skew,
-	}
-}
-
-func (r *Raw) Target() *Target {
-	return r.target
 }
 
 /* below is an example.json file:

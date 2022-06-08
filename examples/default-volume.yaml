@@ -2,10 +2,8 @@ targetConfigs:
 - name: fetchit
   url: http://github.com/containers/fetchit
   methods:
-  - kind: systemd
-    name: httpd-root
-    targetPath: examples/systemd/httpd.service
-    root: true
-    enable: true
+  - kind: raw
+    name: raw-ex
+    targetPath: examples/raw/
     schedule: "*/1 * * * *"
   branch: main

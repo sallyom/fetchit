@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -226,48 +228,48 @@ func getMethodTargetScheds(targetConfigs []*TargetConfig, fetchit *Fetchit) *Fet
 			fetchit.allMethodTypes = append(fetchit.allMethodTypes, cleanMethod)
 		}
 
-		if tc.Ansible != nil {
-			fetchit.allMethodTypes = append(fetchit.allMethodTypes, ansibleMethod)
-			for _, a := range tc.Ansible {
-				a.initialRun = true
-				a.target = gitTarget
-				fetchit.methodTargetScheds[a] = a.SchedInfo()
+		for _, method := range tc.Methods {
+			var m Method
+			m, err := getMethod(method)
+			if err != nil {
+				klog.Errorf("Error getting method from map: %v", err)
 			}
-		}
-		if tc.FileTransfer != nil {
-			fetchit.allMethodTypes = append(fetchit.allMethodTypes, filetransferMethod)
-			for _, ft := range tc.FileTransfer {
-				ft.initialRun = true
-				ft.target = gitTarget
-				fetchit.methodTargetScheds[ft] = ft.SchedInfo()
-			}
-		}
-		if tc.Kube != nil {
-			fetchit.allMethodTypes = append(fetchit.allMethodTypes, kubeMethod)
-			for _, k := range tc.Kube {
-				k.initialRun = true
-				k.target = gitTarget
-				fetchit.methodTargetScheds[k] = k.SchedInfo()
-			}
-		}
-		if tc.Raw != nil {
-			fetchit.allMethodTypes = append(fetchit.allMethodTypes, rawMethod)
-			for _, r := range tc.Raw {
-				r.initialRun = true
-				r.target = gitTarget
-				fetchit.methodTargetScheds[r] = r.SchedInfo()
-			}
-		}
-		if tc.Systemd != nil {
-			fetchit.allMethodTypes = append(fetchit.allMethodTypes, systemdMethod)
-			for _, sd := range tc.Systemd {
-				sd.initialRun = true
-				sd.target = gitTarget
-				fetchit.methodTargetScheds[sd] = sd.SchedInfo()
-			}
+			m.SetInitialRun(true)
+			m.SetTarget(gitTarget)
+			fetchit.methodTargetScheds[m] = m.SchedInfo()
 		}
 	}
 	return fetchit
+}
+
+func getMethod(unstructuredMethod map[string]interface{}) (Method, error) {
+	var m Method
+	switch unstructuredMethod["kind"] {
+	case "raw":
+		var r Raw
+		mapstructure.Decode(unstructuredMethod, &r)
+		m = &r
+	case "ansible":
+		var a Ansible
+		mapstructure.Decode(unstructuredMethod, &a)
+		m = &a
+	case "kube":
+		var k Kube
+		mapstructure.Decode(unstructuredMethod, &k)
+		m = &k
+	case "filetransfer":
+		var f FileTransfer
+		mapstructure.Decode(unstructuredMethod, &f)
+		m = &f
+	case "systemd":
+		var s Systemd
+		mapstructure.Decode(unstructuredMethod, &s)
+		m = &s
+	default:
+		return &DefaultMethod{}, errors.New("Kind of method does not match existing method")
+	}
+
+	return m, nil
 }
 
 // This assumes each Target has no more than 1 each of Raw, Systemd, FileTransfer

@@ -30,13 +30,7 @@ const (
 
 // Systemd to place and/or enable systemd unit files on host
 type Systemd struct {
-	// Name must be unique within target Systemd methods
-	Name string `mapstructure:"name"`
-	// Schedule is how often to check for git updates and/or restart the fetchit service
-	// Must be valid cron expression
-	Schedule string `mapstructure:"schedule"`
-	// Number of seconds to skew the schedule by
-	Skew *int `mapstructure:"skew"`
+	DefaultMethod `mapstructure:",squash"`
 	// AutoUpdateAll will start podman-auto-update.service, podman-auto-update.timer
 	// on the host. With this field true, all other fields are ignored. To place unit files
 	// on host and/or enable individual services, create a separate Target.Methods.Systemd
@@ -45,10 +39,6 @@ type Systemd struct {
 	// TODO: update /etc/systemd/system/podman-auto-update.timer.d/override.conf with schedule
 	// By default, podman will auto-update at midnight daily when this service is running
 	AutoUpdateAll bool `mapstructure:"autoUpdateAll"`
-	// Where in the git repository to fetch a systemd unit file
-	// All '*.service' files will be placed in appropriate systemd path
-	// TargetPath must be a single exact file
-	TargetPath string `mapstructure:"targetPath"`
 	// If true, will place unit file in /etc/systemd/system/
 	// If false (default) will place unit file in ~/.config/systemd/user/
 	Root bool `mapstructure:"root"`
@@ -59,17 +49,10 @@ type Systemd struct {
 	// If true, will enable and start systemd services from fetched unit files
 	// If false (default), will place unit file(s) in appropriate systemd path
 	Enable bool `mapstructure:"enable"`
-	// initialRun is set by fetchit
-	initialRun bool
-	target     *Target
 }
 
 func (sd *Systemd) Type() string {
 	return systemdMethod
-}
-
-func (sd *Systemd) GetName() string {
-	return sd.Name
 }
 
 func (sd *Systemd) SchedInfo() SchedInfo {
@@ -81,10 +64,6 @@ func (sd *Systemd) SchedInfo() SchedInfo {
 		schedule: sd.Schedule,
 		skew:     sd.Skew,
 	}
-}
-
-func (sd *Systemd) Target() *Target {
-	return sd.target
 }
 
 func (sd *Systemd) Process(ctx, conn context.Context, PAT string, skew int) {
@@ -215,7 +194,9 @@ func (sd *Systemd) systemdPodman(ctx context.Context, conn context.Context, path
 	}
 	if sd.initialRun {
 		ft := &FileTransfer{
-			Name: sd.Name,
+			DefaultMethod: DefaultMethod{
+				Name: sd.Name,
+			},
 		}
 		if err := ft.fileTransferPodman(ctx, conn, path, dest, prev); err != nil {
 			return utils.WrapErr(err, "Error deploying systemd %s file(s), Path: %s", sd.Name, sd.TargetPath)
