@@ -112,6 +112,25 @@ func runChangesConcurrent(ctx context.Context, conn context.Context, m Method, c
 	return nil
 }
 
+func (m *DefaultMethod) runChangesConcurrent(ctx context.Context, conn context.Context, changeMap map[*object.Change]string) error {
+	ch := make(chan error)
+	for change, changePath := range changeMap {
+		go func(ch chan<- error, changePath string, change *object.Change) {
+			if err := m.MethodEngine(ctx, conn, change, changePath); err != nil {
+				ch <- utils.WrapErr(err, "error running engine method for change from: %s to %s", change.From.Name, change.To.Name)
+			}
+			ch <- nil
+		}(ch, changePath, change)
+	}
+	for range changeMap {
+		err := <-ch
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // FetchitConfig requires necessary objects to process targets
 type FetchitConfig struct {
 	TargetConfigs []*TargetConfig `mapstructure:"targetConfigs"`
