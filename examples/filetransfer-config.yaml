@@ -1,7 +1,7 @@
 targetConfigs:
 - name: fetchit
   url: http://github.com/containers/fetchit
-  filetransfer:
+  methods:
   - name: ft-ex
     targetPath: examples/filetransfer/
     destinationDirectory: /tmp/ft
