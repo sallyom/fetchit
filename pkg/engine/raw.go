@@ -95,29 +95,10 @@ func (r *Raw) Process(ctx context.Context, conn context.Context, PAT string, ske
 		}
 	}
 
-	latest, err := getLatest(target)
+	err := r.currentToLatest(ctx, conn, target, &tag)
 	if err != nil {
-		klog.Errorf("Failed to get latest commit: %v", err)
+		klog.Errorf("Error moving current to latest: %v", err)
 		return
-	}
-
-	current, err := getCurrent(target, rawMethod, r.Name)
-	if err != nil {
-		klog.Errorf("Failed to get current commit: %v", err)
-		return
-	}
-
-	if latest != current {
-		err = r.Apply(ctx, conn, target, current, latest, r.TargetPath, &tag)
-		if err != nil {
-			klog.Errorf("Failed to apply changes: %v", err)
-			return
-		}
-
-		updateCurrent(ctx, target, latest, rawMethod, r.Name)
-		klog.Infof("Moved raw %s from %s to %s for target %s", r.Name, current, latest, target.Name)
-	} else {
-		klog.Infof("No changes applied to target %s this run, raw %s currently at %s", target.Name, r.Name, current)
 	}
 
 	r.initialRun = false

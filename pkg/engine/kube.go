@@ -52,29 +52,10 @@ func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {
 		}
 	}
 
-	latest, err := getLatest(target)
+	err := k.currentToLatest(ctx, conn, target, &tag)
 	if err != nil {
-		klog.Errorf("Failed to get latest commit: %v", err)
+		klog.Errorf("Error moving current to latest: %v", err)
 		return
-	}
-
-	current, err := getCurrent(target, kubeMethod, k.Name)
-	if err != nil {
-		klog.Errorf("Failed to get current commit: %v", err)
-		return
-	}
-
-	if latest != current {
-		err = k.Apply(ctx, conn, target, current, latest, k.TargetPath, &tag)
-		if err != nil {
-			klog.Errorf("Failed to apply changes: %v", err)
-			return
-		}
-
-		updateCurrent(ctx, target, latest, kubeMethod, k.Name)
-		klog.Infof("Moved kube from %s to %s for target %s", current, latest, target.Name)
-	} else {
-		klog.Infof("No changes applied to target %s this run, kube currently at %s", target.Name, current)
 	}
 
 	k.initialRun = false

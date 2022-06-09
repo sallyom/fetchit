@@ -2,12 +2,14 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/containers/fetchit/pkg/engine/utils"
 	"github.com/go-co-op/gocron"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"k8s.io/klog/v2"
 )
 
 type Method interface {
@@ -62,6 +64,32 @@ func (m *DefaultMethod) SetTarget(t *Target) {
 
 func (m *DefaultMethod) SetInitialRun(b bool) {
 	m.initialRun = b
+}
+
+func (m *DefaultMethod) currentToLatest(ctx, conn context.Context, target *Target, tag *[]string) error {
+	latest, err := getLatest(target)
+	if err != nil {
+		return fmt.Errorf("Failed to get latest commit: %v", err)
+	}
+
+	current, err := getCurrent(target, systemdMethod, m.Name)
+	if err != nil {
+		return fmt.Errorf("Failed to get current commit: %v", err)
+	}
+
+	if latest != current {
+		err = m.Apply(ctx, conn, target, current, latest, m.TargetPath, tag)
+		if err != nil {
+			return fmt.Errorf("Failed to apply changes: %v", err)
+		}
+
+		updateCurrent(ctx, target, latest, systemdMethod, m.Name)
+		klog.Infof("Moved systemd %s from %s to %s for target %s", m.Name, current, latest, target.Name)
+	} else {
+		klog.Infof("No changes applied to target %s this run, %s%md currently at %s", target.Name, m.Type(), current)
+	}
+
+	return nil
 }
 
 func (m *DefaultMethod) Process(ctx context.Context, conn context.Context, PAT string, skew int) {

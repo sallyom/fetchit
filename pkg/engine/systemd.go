@@ -100,29 +100,10 @@ func (sd *Systemd) Process(ctx, conn context.Context, PAT string, skew int) {
 		}
 	}
 
-	latest, err := getLatest(target)
+	err := sd.currentToLatest(ctx, conn, target, &tag)
 	if err != nil {
-		klog.Errorf("Failed to get latest commit: %v", err)
+		klog.Errorf("Error moving current to latest: %v", err)
 		return
-	}
-
-	current, err := getCurrent(target, systemdMethod, sd.Name)
-	if err != nil {
-		klog.Errorf("Failed to get current commit: %v", err)
-		return
-	}
-
-	if latest != current {
-		err = sd.Apply(ctx, conn, target, current, latest, sd.TargetPath, &tag)
-		if err != nil {
-			klog.Errorf("Failed to apply changes: %v", err)
-			return
-		}
-
-		updateCurrent(ctx, target, latest, systemdMethod, sd.Name)
-		klog.Infof("Moved systemd %s from %s to %s for target %s", sd.Name, current, latest, target.Name)
-	} else {
-		klog.Infof("No changes applied to target %s this run, systemd currently at %s", target.Name, current)
 	}
 
 	sd.initialRun = false
