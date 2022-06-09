@@ -37,29 +37,10 @@ func (ft *FileTransfer) Process(ctx, conn context.Context, PAT string, skew int)
 		}
 	}
 
-	latest, err := getLatest(target)
+	err := ft.currentToLatest(ctx, conn, target, nil)
 	if err != nil {
-		klog.Errorf("Failed to get latest commit: %v", err)
+		klog.Errorf("Error moving current to latest: %v", err)
 		return
-	}
-
-	current, err := getCurrent(target, filetransferMethod, ft.Name)
-	if err != nil {
-		klog.Errorf("Failed to get current commit: %v", err)
-		return
-	}
-
-	if latest != current {
-		err = ft.Apply(ctx, conn, target, current, latest, ft.TargetPath, nil)
-		if err != nil {
-			klog.Errorf("Failed to apply changes: %v", err)
-			return
-		}
-
-		updateCurrent(ctx, target, latest, filetransferMethod, ft.Name)
-		klog.Infof("Moved filetransfer %s from %s to %s for target %s", ft.Name, current, latest, target.Name)
-	} else {
-		klog.Infof("No changes applied to target %s this run, filetransfer currently at %s", target.Name, current)
 	}
 
 	ft.initialRun = false

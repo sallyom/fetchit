@@ -41,29 +41,10 @@ func (ans *Ansible) Process(ctx, conn context.Context, PAT string, skew int) {
 		}
 	}
 
-	latest, err := getLatest(target)
+	err := ans.currentToLatest(ctx, conn, target, &tag)
 	if err != nil {
-		klog.Errorf("Failed to get latest commit: %v", err)
+		klog.Errorf("Error moving current to latest: %v", err)
 		return
-	}
-
-	current, err := getCurrent(target, ansibleMethod, ans.Name)
-	if err != nil {
-		klog.Errorf("Failed to get current commit: %v", err)
-		return
-	}
-
-	if latest != current {
-		err = ans.Apply(ctx, conn, target, current, latest, ans.TargetPath, &tag)
-		if err != nil {
-			klog.Errorf("Failed to apply changes: %v", err)
-			return
-		}
-
-		updateCurrent(ctx, target, latest, ansibleMethod, ans.Name)
-		klog.Infof("Moved ansible %s from %s to %s for target %s", ans.Name, current, latest, target.Name)
-	} else {
-		klog.Infof("No changes applied to target %s this run, ansible %s currently at %s", target.Name, ans.Name, current)
 	}
 
 	ans.initialRun = false
