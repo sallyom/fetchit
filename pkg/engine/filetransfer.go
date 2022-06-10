@@ -24,7 +24,7 @@ func (m *FileTransfer) Type() string {
 }
 
 func (ft *FileTransfer) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := ft.Target()
+	target := ft.GetTarget()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()

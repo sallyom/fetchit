@@ -279,9 +279,9 @@ func getMethodTargetScheds(targetConfigs []*TargetConfig, fetchit *Fetchit) *Fet
 func (f *Fetchit) RunTargets() {
 	for method := range f.methodTargetScheds {
 		// ConfigReload, Systemd.AutoUpdateAll, Clean methods do not include git URL
-		if method.Target().url != "" {
-			if err := getClone(method.Target(), f.pat); err != nil {
-				klog.Warningf("Target: %s, clone error: %v, will retry next scheduled run", method.Target().Name, err)
+		if method.GetTarget().url != "" {
+			if err := getClone(method.GetTarget(), f.pat); err != nil {
+				klog.Warningf("Target: %s, clone error: %v, will retry next scheduled run", method.GetTarget().Name, err)
 			}
 		}
 	}
@@ -294,8 +294,8 @@ func (f *Fetchit) RunTargets() {
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		mt := method.Type()
-		klog.Infof("Processing Target: %s Method: %s Name: %s", method.Target().Name, mt, method.GetName())
+		mt := method.GetKind()
+		klog.Infof("Processing Target: %s Method: %s Name: %s", method.GetTarget().Name, mt, method.GetName())
 		s.Cron(schedInfo.schedule).Tag(mt).Do(method.Process, ctx, f.conn, f.pat, skew)
 		s.StartImmediately()
 	}

@@ -67,7 +67,7 @@ func (sd *Systemd) SchedInfo() SchedInfo {
 }
 
 func (sd *Systemd) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := sd.Target()
+	target := sd.GetTarget()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()

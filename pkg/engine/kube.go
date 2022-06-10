@@ -37,7 +37,7 @@ func (m *Kube) Type() string {
 }
 
 func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := k.Target()
+	target := k.GetTarget()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()

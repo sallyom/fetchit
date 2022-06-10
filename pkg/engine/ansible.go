@@ -28,7 +28,7 @@ func (m *Ansible) Type() string {
 
 func (ans *Ansible) Process(ctx, conn context.Context, PAT string, skew int) {
 	time.Sleep(time.Duration(skew) * time.Millisecond)
-	target := ans.Target()
+	target := ans.GetTarget()
 	target.mu.Lock()
 	defer target.mu.Unlock()
 

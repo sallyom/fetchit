@@ -81,7 +81,7 @@ type RawPod struct {
 
 func (r *Raw) Process(ctx context.Context, conn context.Context, PAT string, skew int) {
 	time.Sleep(time.Duration(skew) * time.Millisecond)
-	target := r.Target()
+	target := r.GetTarget()
 	target.mu.Lock()
 	defer target.mu.Unlock()
 

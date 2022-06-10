@@ -26,7 +26,7 @@ type Method interface {
 }
 
 type CommonMethod struct {
-	// Name must be unique within target method
+	// Name must be unique within target Raw methods
 	Name string `mapstructure:"name"`
 	// Schedule is how often to check for git updates and/or restart the fetchit service
 	// Must be valid cron expression
@@ -87,7 +87,7 @@ func currentToLatest(ctx, conn context.Context, m Method, target *Target, tag *[
 		updateCurrent(ctx, target, latest, systemdMethod, m.GetName())
 		klog.Infof("Moved systemd %s from %s to %s for target %s", m.GetName(), current, latest, target.Name)
 	} else {
-		klog.Infof("No changes applied to target %s this run, %s currently at %s", target.Name, m.Type(), current)
+		klog.Infof("No changes applied to target %s this run, %s currently at %s", target.Name, m.GetKind(), current)
 	}
 
 	return nil
