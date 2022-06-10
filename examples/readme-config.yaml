@@ -8,6 +8,6 @@ targetConfigs:
     destinationDirectory: /tmp
     schedule: "*/1 * * * *"
   raw:
-    name: raw-ex
+  - name: raw-ex
     targetPath: examples/raw/
     schedule: "*/1 * * * *"

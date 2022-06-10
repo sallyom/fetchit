@@ -1,9 +1,8 @@
 targetConfigs:
 - name: fetchit
   url: http://github.com/containers/fetchit
-  methods:
-  - kind: filetransfer
-    name: ft-ex
+  filetransfer:
+  - name: ft-ex
     targetPath: examples/filetransfer/hello.txt
     destinationDirectory: /tmp/ft/single
     schedule: "*/1 * * * *"

@@ -1,9 +1,8 @@
 targetConfigs:
 - name: fetchit
   url: http://github.com/containers/fetchit
-  methods:
-    - kind: ansible  
-      name: ansible
+  ansible:
+    - name: ansible
       targetPath: examples/ansible/
       sshDirectory: /root/.ssh
       schedule: "*/1 * * * *"
