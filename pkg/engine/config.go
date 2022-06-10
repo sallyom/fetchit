@@ -29,10 +29,6 @@ type ConfigReload struct {
 	ConfigURL    string `mapstructure:"configURL"`
 }
 
-func (c *ConfigReload) Type() string {
-	return configFileMethod
-}
-
 func (c *ConfigReload) GetName() string {
 	return configFileMethod
 }

@@ -19,10 +19,6 @@ type FileTransfer struct {
 	DestinationDirectory string `mapstructure:"destinationDirectory"`
 }
 
-func (ft *FileTransfer) Type() string {
-	return filetransferMethod
-}
-
 func (ft *FileTransfer) Process(ctx, conn context.Context, PAT string, skew int) {
 	target := ft.GetTarget()
 	time.Sleep(time.Duration(skew) * time.Millisecond)

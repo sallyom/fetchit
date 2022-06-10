@@ -20,10 +20,6 @@ type Clean struct {
 	All          bool `mapstructure:"all"`
 }
 
-func (c *Clean) Type() string {
-	return cleanMethod
-}
-
 func (c *Clean) GetName() string {
 	return cleanMethod
 }

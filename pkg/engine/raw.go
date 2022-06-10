@@ -28,10 +28,6 @@ type Raw struct {
 	PullImage bool `mapstructure:"pullImage"`
 }
 
-func (r *Raw) Type() string {
-	return rawMethod
-}
-
 /* below is an example.json file:
 {"Image":"docker.io/mmumshad/simple-webapp-color:latest",
 "Name": "colors",

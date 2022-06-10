@@ -51,10 +51,6 @@ type Systemd struct {
 	Enable bool `mapstructure:"enable"`
 }
 
-func (sd *Systemd) Type() string {
-	return systemdMethod
-}
-
 func (sd *Systemd) SchedInfo() SchedInfo {
 	// with autoupdate, a schedule is not required
 	if sd.AutoUpdateAll {

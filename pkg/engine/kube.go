@@ -32,10 +32,6 @@ type Kube struct {
 	CommonMethod `mapstructure:",squash"`
 }
 
-func (k *Kube) Type() string {
-	return kubeMethod
-}
-
 func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {
 	target := k.GetTarget()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
