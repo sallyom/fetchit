@@ -1,14 +1,12 @@
 targetConfigs:
 - name: autoupdate
-  methods:
-  - kind: systemd
-    name: autoupdate-ex
+  systemd:
+  - name: autoupdate-ex
     autoUpdateAll: true
 - name: fetchit
   url: http://github.com/containers/fetchit
-  methods:
-  - kind: systemd
-    name: sysd-ex
+  systemd:
+  - name: sysd-ex
     targetPath: examples/systemd/httpd.service
     root: true
     enable: true

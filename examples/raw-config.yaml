@@ -1,9 +1,8 @@
 targetConfigs:
 - name: fetchit
   url: https://github.com/containers/fetchit
-  methods:
-  - kind: raw
-    name: raw-ex
+  raw:
+  - name: raw-ex
     targetPath: examples/raw/
     schedule: "*/1 * * * *"
     pullImage: false
