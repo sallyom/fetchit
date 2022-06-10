@@ -86,7 +86,7 @@ func (m *DefaultMethod) currentToLatest(ctx, conn context.Context, target *Targe
 		updateCurrent(ctx, target, latest, systemdMethod, m.Name)
 		klog.Infof("Moved systemd %s from %s to %s for target %s", m.Name, current, latest, target.Name)
 	} else {
-		klog.Infof("No changes applied to target %s this run, %s%md currently at %s", target.Name, m.Type(), current)
+		klog.Infof("No changes applied to target %s this run, %s currently at %s", target.Name, m.Type(), current)
 	}
 
 	return nil
