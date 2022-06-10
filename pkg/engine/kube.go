@@ -29,41 +29,15 @@ const kubeMethod = "kube"
 
 // Kube to launch pods using podman kube-play
 type Kube struct {
-	// Name must be unique within target Kube methods
-	Name string `mapstructure:"name"`
-	// Schedule is how often to check for git updates and/or restart the fetchit service
-	// Must be valid cron expression
-	Schedule string `mapstructure:"schedule"`
-	// Number of seconds to skew the schedule by
-	Skew *int `mapstructure:"skew"`
-	// Where in the git repository to fetch a file or directory (to fetch all files in directory)
-	TargetPath string `mapstructure:"targetPath"`
-	// initialRun is set by fetchit
-	initialRun bool
-	target     *Target
+	CommonMethod `mapstructure:",squash"`
 }
 
-func (k *Kube) Type() string {
+func (m *Kube) GetKind() string {
 	return kubeMethod
 }
 
-func (k *Kube) GetName() string {
-	return k.Name
-}
-
-func (k *Kube) SchedInfo() SchedInfo {
-	return SchedInfo{
-		schedule: k.Schedule,
-		skew:     k.Skew,
-	}
-}
-
-func (k *Kube) Target() *Target {
-	return k.target
-}
-
 func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := k.Target()
+	target := k.GetTarget()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()
@@ -78,29 +52,10 @@ func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {
 		}
 	}
 
-	latest, err := getLatest(target)
+	err := currentToLatest(ctx, conn, k, target, &tag)
 	if err != nil {
-		klog.Errorf("Failed to get latest commit: %v", err)
+		klog.Errorf("Error moving current to latest: %v", err)
 		return
-	}
-
-	current, err := getCurrent(target, kubeMethod, k.Name)
-	if err != nil {
-		klog.Errorf("Failed to get current commit: %v", err)
-		return
-	}
-
-	if latest != current {
-		err = k.Apply(ctx, conn, target, current, latest, k.TargetPath, &tag)
-		if err != nil {
-			klog.Errorf("Failed to apply changes: %v", err)
-			return
-		}
-
-		updateCurrent(ctx, target, latest, kubeMethod, k.Name)
-		klog.Infof("Moved kube from %s to %s for target %s", current, latest, target.Name)
-	} else {
-		klog.Infof("No changes applied to target %s this run, kube currently at %s", target.Name, current)
 	}
 
 	k.initialRun = false
@@ -119,27 +74,8 @@ func (k *Kube) Apply(ctx, conn context.Context, target *Target, currentState, de
 	if err != nil {
 		return err
 	}
-	if err := k.runChangesConcurrent(ctx, conn, changeMap); err != nil {
+	if err := runChangesConcurrent(ctx, conn, k, changeMap); err != nil {
 		return err
-	}
-	return nil
-}
-
-func (k *Kube) runChangesConcurrent(ctx context.Context, conn context.Context, changeMap map[*object.Change]string) error {
-	ch := make(chan error)
-	for change, changePath := range changeMap {
-		go func(ch chan<- error, changePath string, change *object.Change) {
-			if err := k.MethodEngine(ctx, conn, change, changePath); err != nil {
-				ch <- utils.WrapErr(err, "error running engine method for change from: %s to %s", change.From.Name, change.To.Name)
-			}
-			ch <- nil
-		}(ch, changePath, change)
-	}
-	for range changeMap {
-		err := <-ch
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }

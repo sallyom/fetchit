@@ -23,39 +23,13 @@ const rawMethod = "raw"
 
 // Raw to deploy pods from json or yaml files
 type Raw struct {
-	// Name must be unique within target Raw methods
-	Name string `mapstructure:"name"`
-	// Schedule is how often to check for git updates and/or restart the fetchit service
-	// Must be valid cron expression
-	Schedule string `mapstructure:"schedule"`
-	// Number of seconds to skew the schedule by
-	Skew *int `mapstructure:"skew"`
-	// Where in the git repository to fetch a file or directory (to fetch all files in directory)
-	TargetPath string `mapstructure:"targetPath"`
+	CommonMethod `mapstructure:",squash"`
 	// Pull images configured in target files each time regardless of if it already exists
 	PullImage bool `mapstructure:"pullImage"`
-	// initialRun is set by fetchit
-	initialRun bool
-	target     *Target
 }
 
-func (r *Raw) Type() string {
+func (m *Raw) GetKind() string {
 	return rawMethod
-}
-
-func (r *Raw) GetName() string {
-	return r.Name
-}
-
-func (r *Raw) SchedInfo() SchedInfo {
-	return SchedInfo{
-		schedule: r.Schedule,
-		skew:     r.Skew,
-	}
-}
-
-func (r *Raw) Target() *Target {
-	return r.target
 }
 
 /* below is an example.json file:
@@ -107,7 +81,7 @@ type RawPod struct {
 
 func (r *Raw) Process(ctx context.Context, conn context.Context, PAT string, skew int) {
 	time.Sleep(time.Duration(skew) * time.Millisecond)
-	target := r.Target()
+	target := r.GetTarget()
 	target.mu.Lock()
 	defer target.mu.Unlock()
 
@@ -121,29 +95,10 @@ func (r *Raw) Process(ctx context.Context, conn context.Context, PAT string, ske
 		}
 	}
 
-	latest, err := getLatest(target)
+	err := currentToLatest(ctx, conn, r, target, &tag)
 	if err != nil {
-		klog.Errorf("Failed to get latest commit: %v", err)
+		klog.Errorf("Error moving current to latest: %v", err)
 		return
-	}
-
-	current, err := getCurrent(target, rawMethod, r.Name)
-	if err != nil {
-		klog.Errorf("Failed to get current commit: %v", err)
-		return
-	}
-
-	if latest != current {
-		err = r.Apply(ctx, conn, target, current, latest, r.TargetPath, &tag)
-		if err != nil {
-			klog.Errorf("Failed to apply changes: %v", err)
-			return
-		}
-
-		updateCurrent(ctx, target, latest, rawMethod, r.Name)
-		klog.Infof("Moved raw %s from %s to %s for target %s", r.Name, current, latest, target.Name)
-	} else {
-		klog.Infof("No changes applied to target %s this run, raw %s currently at %s", target.Name, r.Name, current)
 	}
 
 	r.initialRun = false
@@ -223,27 +178,8 @@ func (r *Raw) Apply(ctx, conn context.Context, target *Target, currentState, des
 	if err != nil {
 		return err
 	}
-	if err := r.runChangesConcurrent(ctx, conn, changeMap); err != nil {
+	if err := runChangesConcurrent(ctx, conn, r, changeMap); err != nil {
 		return err
-	}
-	return nil
-}
-
-func (r *Raw) runChangesConcurrent(ctx context.Context, conn context.Context, changeMap map[*object.Change]string) error {
-	ch := make(chan error)
-	for change, changePath := range changeMap {
-		go func(ch chan<- error, changePath string, change *object.Change) {
-			if err := r.MethodEngine(ctx, conn, change, changePath); err != nil {
-				ch <- utils.WrapErr(err, "error running engine method for change from: %s to %s", change.From.Name, change.To.Name)
-			}
-			ch <- nil
-		}(ch, changePath, change)
-	}
-	for range changeMap {
-		err := <-ch
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
