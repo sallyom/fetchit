@@ -232,40 +232,40 @@ func getMethodTargetScheds(targetConfigs []*TargetConfig, fetchit *Fetchit) *Fet
 		}
 
 		if tc.Ansible != nil {
-			for _, a := range tc.Ansible {
-				fetchit.allMethodTypes[ansibleMethod] = struct{}{}
+			fetchit.allMethodTypes[ansibleMethod] = struct{}{}
+			for _, a := range *tc.Ansible {
 				a.initialRun = true
 				a.target = gitTarget
 				fetchit.methodTargetScheds[a] = a.SchedInfo()
 			}
 		}
 		if tc.FileTransfer != nil {
-			for _, ft := range tc.FileTransfer {
-				fetchit.allMethodTypes[filetransferMethod] = struct{}{}
+			fetchit.allMethodTypes[filetransferMethod] = struct{}{}
+			for _, ft := range *tc.FileTransfer {
 				ft.initialRun = true
 				ft.target = gitTarget
 				fetchit.methodTargetScheds[ft] = ft.SchedInfo()
 			}
 		}
 		if tc.Kube != nil {
-			for _, k := range tc.Kube {
-				fetchit.allMethodTypes[kubeMethod] = struct{}{}
+			fetchit.allMethodTypes[kubeMethod] = struct{}{}
+			for _, k := range *tc.Kube {
 				k.initialRun = true
 				k.target = gitTarget
 				fetchit.methodTargetScheds[k] = k.SchedInfo()
 			}
 		}
 		if tc.Raw != nil {
-			for _, r := range tc.Raw {
-				fetchit.allMethodTypes[rawMethod] = struct{}{}
+			fetchit.allMethodTypes[rawMethod] = struct{}{}
+			for _, r := range *tc.Raw {
 				r.initialRun = true
 				r.target = gitTarget
 				fetchit.methodTargetScheds[r] = r.SchedInfo()
 			}
 		}
 		if tc.Systemd != nil {
-			for _, sd := range tc.Systemd {
-				fetchit.allMethodTypes[rawMethod] = struct{}{}
+			fetchit.allMethodTypes[rawMethod] = struct{}{}
+			for _, sd := range *tc.Systemd {
 				sd.initialRun = true
 				sd.target = gitTarget
 				fetchit.methodTargetScheds[sd] = sd.SchedInfo()
