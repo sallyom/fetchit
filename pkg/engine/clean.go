@@ -15,9 +15,9 @@ const cleanMethod = "clean"
 
 // Clean configures targets to run a system prune periodically
 type Clean struct {
-	DefaultMethod `mapstructure:",squash"`
-	Volumes       bool `mapstructure:"volumes"`
-	All           bool `mapstructure:"all"`
+	CommonMethod `mapstructure:",squash"`
+	Volumes      bool `mapstructure:"volumes"`
+	All          bool `mapstructure:"all"`
 }
 
 func (c *Clean) Type() string {

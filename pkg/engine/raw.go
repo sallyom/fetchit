@@ -23,7 +23,7 @@ const rawMethod = "raw"
 
 // Raw to deploy pods from json or yaml files
 type Raw struct {
-	DefaultMethod `mapstructure:",squash"`
+	CommonMethod `mapstructure:",squash"`
 	// Pull images configured in target files each time regardless of if it already exists
 	PullImage bool `mapstructure:"pullImage"`
 }
@@ -81,7 +81,7 @@ type RawPod struct {
 
 func (r *Raw) Process(ctx context.Context, conn context.Context, PAT string, skew int) {
 	time.Sleep(time.Duration(skew) * time.Millisecond)
-	target := r.Target()
+	target := r.GetTarget()
 	target.mu.Lock()
 	defer target.mu.Unlock()
 
@@ -95,7 +95,7 @@ func (r *Raw) Process(ctx context.Context, conn context.Context, PAT string, ske
 		}
 	}
 
-	err := r.currentToLatest(ctx, conn, target, &tag)
+	err := currentToLatest(ctx, conn, r, target, &tag)
 	if err != nil {
 		klog.Errorf("Error moving current to latest: %v", err)
 		return
@@ -178,7 +178,7 @@ func (r *Raw) Apply(ctx, conn context.Context, target *Target, currentState, des
 	if err != nil {
 		return err
 	}
-	if err := r.runChangesConcurrent(ctx, conn, changeMap); err != nil {
+	if err := runChangesConcurrent(ctx, conn, r, changeMap); err != nil {
 		return err
 	}
 	return nil

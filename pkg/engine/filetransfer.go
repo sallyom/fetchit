@@ -14,7 +14,7 @@ const filetransferMethod = "filetransfer"
 
 // FileTransfer to place files on host system
 type FileTransfer struct {
-	DefaultMethod `mapstructure:",squash"`
+	CommonMethod `mapstructure:",squash"`
 	// Directory path on the host system in which the target files should be placed
 	DestinationDirectory string `mapstructure:"destinationDirectory"`
 }
@@ -24,7 +24,7 @@ func (ft *FileTransfer) Type() string {
 }
 
 func (ft *FileTransfer) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := ft.Target()
+	target := ft.GetTarget()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()
@@ -37,7 +37,7 @@ func (ft *FileTransfer) Process(ctx, conn context.Context, PAT string, skew int)
 		}
 	}
 
-	err := ft.currentToLatest(ctx, conn, target, nil)
+	err := currentToLatest(ctx, conn, ft, target, nil)
 	if err != nil {
 		klog.Errorf("Error moving current to latest: %v", err)
 		return
@@ -62,7 +62,7 @@ func (ft *FileTransfer) Apply(ctx, conn context.Context, target *Target, current
 	if err != nil {
 		return err
 	}
-	if err := ft.runChangesConcurrent(ctx, conn, changeMap); err != nil {
+	if err := runChangesConcurrent(ctx, conn, ft, changeMap); err != nil {
 		return err
 	}
 	return nil

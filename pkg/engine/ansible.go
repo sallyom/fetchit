@@ -17,7 +17,7 @@ const ansibleMethod = "ansible"
 
 // Ansible to place and run ansible playbooks
 type Ansible struct {
-	DefaultMethod `mapstructure:",squash"`
+	CommonMethod `mapstructure:",squash"`
 	// SshDirectory for ansible to connect to host
 	SshDirectory string `mapstructure:"sshDirectory"`
 }
@@ -28,7 +28,7 @@ func (a *Ansible) Type() string {
 
 func (ans *Ansible) Process(ctx, conn context.Context, PAT string, skew int) {
 	time.Sleep(time.Duration(skew) * time.Millisecond)
-	target := ans.Target()
+	target := ans.GetTarget()
 	target.mu.Lock()
 	defer target.mu.Unlock()
 
@@ -41,7 +41,7 @@ func (ans *Ansible) Process(ctx, conn context.Context, PAT string, skew int) {
 		}
 	}
 
-	err := ans.currentToLatest(ctx, conn, target, &tag)
+	err := currentToLatest(ctx, conn, ans, target, &tag)
 	if err != nil {
 		klog.Errorf("Error moving current to latest: %v", err)
 		return
@@ -59,7 +59,7 @@ func (ans *Ansible) Apply(ctx, conn context.Context, target *Target, currentStat
 	if err != nil {
 		return err
 	}
-	if err := ans.runChangesConcurrent(ctx, conn, changeMap); err != nil {
+	if err := runChangesConcurrent(ctx, conn, ans, changeMap); err != nil {
 		return err
 	}
 	return nil

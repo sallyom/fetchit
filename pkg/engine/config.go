@@ -25,8 +25,8 @@ const configFileMethod = "config"
 // At this time, only 1 FetchitConfigReload target can be passed to fetchit
 // TODO: Collect multiple from multiple FetchitTargets and merge configs into 1 on disk
 type ConfigReload struct {
-	DefaultMethod `mapstructure:",squash"`
-	ConfigURL     string `mapstructure:"configURL"`
+	CommonMethod `mapstructure:",squash"`
+	ConfigURL    string `mapstructure:"configURL"`
 }
 
 func (c *ConfigReload) Type() string {

@@ -29,7 +29,7 @@ const kubeMethod = "kube"
 
 // Kube to launch pods using podman kube-play
 type Kube struct {
-	DefaultMethod `mapstructure:",squash"`
+	CommonMethod `mapstructure:",squash"`
 }
 
 func (k *Kube) Type() string {
@@ -37,7 +37,7 @@ func (k *Kube) Type() string {
 }
 
 func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := k.Target()
+	target := k.GetTarget()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()
@@ -52,7 +52,7 @@ func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {
 		}
 	}
 
-	err := k.currentToLatest(ctx, conn, target, &tag)
+	err := currentToLatest(ctx, conn, k, target, &tag)
 	if err != nil {
 		klog.Errorf("Error moving current to latest: %v", err)
 		return
@@ -74,7 +74,7 @@ func (k *Kube) Apply(ctx, conn context.Context, target *Target, currentState, de
 	if err != nil {
 		return err
 	}
-	if err := k.runChangesConcurrent(ctx, conn, changeMap); err != nil {
+	if err := runChangesConcurrent(ctx, conn, k, changeMap); err != nil {
 		return err
 	}
 	return nil

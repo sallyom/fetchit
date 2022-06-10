@@ -13,9 +13,10 @@ import (
 )
 
 type Method interface {
-	Type() string
 	GetName() string
-	Target() *Target
+	GetKind() string
+	GetTargetPath() string
+	GetTarget() *Target
 	SetTarget(*Target)
 	SetInitialRun(bool)
 	SchedInfo() SchedInfo
@@ -24,7 +25,8 @@ type Method interface {
 	MethodEngine(ctx context.Context, conn context.Context, change *object.Change, path string) error
 }
 
-type DefaultMethod struct {
+type CommonMethod struct {
+	Kind string `mapstructure:"kind"`
 	// Name must be unique within target Raw methods
 	Name string `mapstructure:"name"`
 	// Schedule is how often to check for git updates and/or restart the fetchit service
@@ -39,72 +41,64 @@ type DefaultMethod struct {
 	target     *Target
 }
 
-func (m *DefaultMethod) Type() string {
-	return "default"
+func (m *CommonMethod) GetKind() string {
+	return m.Kind
 }
 
-func (m *DefaultMethod) GetName() string {
+func (m *CommonMethod) GetName() string {
 	return m.Name
 }
 
-func (m *DefaultMethod) SchedInfo() SchedInfo {
+func (m *CommonMethod) SchedInfo() SchedInfo {
 	return SchedInfo{
 		schedule: m.Schedule,
 		skew:     m.Skew,
 	}
 }
 
-func (m *DefaultMethod) Target() *Target {
+func (m *CommonMethod) GetTargetPath() string {
+	return m.TargetPath
+}
+
+func (m *CommonMethod) GetTarget() *Target {
 	return m.target
 }
 
-func (m *DefaultMethod) SetTarget(t *Target) {
+func (m *CommonMethod) SetTarget(t *Target) {
 	m.target = t
 }
 
-func (m *DefaultMethod) SetInitialRun(b bool) {
+func (m *CommonMethod) SetInitialRun(b bool) {
 	m.initialRun = b
 }
 
-func (m *DefaultMethod) currentToLatest(ctx, conn context.Context, target *Target, tag *[]string) error {
+func currentToLatest(ctx, conn context.Context, m Method, target *Target, tag *[]string) error {
 	latest, err := getLatest(target)
 	if err != nil {
 		return fmt.Errorf("Failed to get latest commit: %v", err)
 	}
 
-	current, err := getCurrent(target, systemdMethod, m.Name)
+	current, err := getCurrent(target, systemdMethod, m.GetName())
 	if err != nil {
 		return fmt.Errorf("Failed to get current commit: %v", err)
 	}
 
 	if latest != current {
-		err = m.Apply(ctx, conn, target, current, latest, m.TargetPath, tag)
+		err = m.Apply(ctx, conn, target, current, latest, m.GetTargetPath(), tag)
 		if err != nil {
 			return fmt.Errorf("Failed to apply changes: %v", err)
 		}
 
-		updateCurrent(ctx, target, latest, systemdMethod, m.Name)
-		klog.Infof("Moved systemd %s from %s to %s for target %s", m.Name, current, latest, target.Name)
+		updateCurrent(ctx, target, latest, systemdMethod, m.GetName())
+		klog.Infof("Moved systemd %s from %s to %s for target %s", m.GetName(), current, latest, target.Name)
 	} else {
-		klog.Infof("No changes applied to target %s this run, %s currently at %s", target.Name, m.Type(), current)
+		klog.Infof("No changes applied to target %s this run, %s currently at %s", target.Name, m.GetKind(), current)
 	}
 
 	return nil
 }
 
-func (m *DefaultMethod) Process(ctx context.Context, conn context.Context, PAT string, skew int) {
-	return
-}
-
-func (m *DefaultMethod) Apply(ctx context.Context, conn context.Context, target *Target, currentState plumbing.Hash, desiredState plumbing.Hash, targetPath string, tags *[]string) error {
-	return nil
-}
-
-func (m *DefaultMethod) MethodEngine(ctx context.Context, conn context.Context, change *object.Change, path string) error {
-	return nil
-}
-
-func (m *DefaultMethod) runChangesConcurrent(ctx context.Context, conn context.Context, changeMap map[*object.Change]string) error {
+func runChangesConcurrent(ctx context.Context, conn context.Context, m Method, changeMap map[*object.Change]string) error {
 	ch := make(chan error)
 	for change, changePath := range changeMap {
 		go func(ch chan<- error, changePath string, change *object.Change) {

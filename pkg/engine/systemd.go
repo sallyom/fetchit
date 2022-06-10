@@ -30,7 +30,7 @@ const (
 
 // Systemd to place and/or enable systemd unit files on host
 type Systemd struct {
-	DefaultMethod `mapstructure:",squash"`
+	CommonMethod `mapstructure:",squash"`
 	// AutoUpdateAll will start podman-auto-update.service, podman-auto-update.timer
 	// on the host. With this field true, all other fields are ignored. To place unit files
 	// on host and/or enable individual services, create a separate Target.Methods.Systemd
@@ -67,7 +67,7 @@ func (sd *Systemd) SchedInfo() SchedInfo {
 }
 
 func (sd *Systemd) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := sd.Target()
+	target := sd.GetTarget()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()
@@ -100,7 +100,7 @@ func (sd *Systemd) Process(ctx, conn context.Context, PAT string, skew int) {
 		}
 	}
 
-	err := sd.currentToLatest(ctx, conn, target, &tag)
+	err := currentToLatest(ctx, conn, sd, target, &tag)
 	if err != nil {
 		klog.Errorf("Error moving current to latest: %v", err)
 		return
@@ -137,7 +137,7 @@ func (sd *Systemd) Apply(ctx, conn context.Context, target *Target, currentState
 	if err != nil {
 		return err
 	}
-	if err := sd.runChangesConcurrent(ctx, conn, changeMap); err != nil {
+	if err := runChangesConcurrent(ctx, conn, sd, changeMap); err != nil {
 		return err
 	}
 	return nil
@@ -156,7 +156,7 @@ func (sd *Systemd) systemdPodman(ctx context.Context, conn context.Context, path
 	}
 	if sd.initialRun {
 		ft := &FileTransfer{
-			DefaultMethod: DefaultMethod{
+			CommonMethod: CommonMethod{
 				Name: sd.Name,
 			},
 		}
