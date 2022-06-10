@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -13,30 +12,6 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
-
-func applyChanges(ctx context.Context, target *Target, currentState, desiredState plumbing.Hash, targetPath string, tags *[]string) (map[*object.Change]string, error) {
-	if desiredState.IsZero() {
-		return nil, errors.New("Cannot run Apply if desired state is empty")
-	}
-	directory := filepath.Base(target.url)
-
-	currentTree, err := getTreeFromHash(directory, currentState)
-	if err != nil {
-		return nil, utils.WrapErr(err, "Error getting tree from hash %s", currentState)
-	}
-
-	desiredTree, err := getTreeFromHash(directory, desiredState)
-	if err != nil {
-		return nil, utils.WrapErr(err, "Error getting tree from hash %s", desiredState)
-	}
-
-	changeMap, err := getFilteredChangeMap(directory, targetPath, currentTree, desiredTree, tags)
-	if err != nil {
-		return nil, utils.WrapErr(err, "Error getting filtered change map from %s to %s", currentState, desiredState)
-	}
-
-	return changeMap, nil
-}
 
 //getLatest will get the head of the branch in the repository specified by the target's url
 func getLatest(target *Target) (plumbing.Hash, error) {

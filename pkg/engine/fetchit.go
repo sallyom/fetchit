@@ -34,6 +34,8 @@ var (
 	fetchit       *Fetchit
 )
 
+type empty struct{}
+
 type Fetchit struct {
 	// conn holds podman client
 	conn               context.Context
@@ -42,13 +44,13 @@ type Fetchit struct {
 	restartFetchit     bool
 	scheduler          *gocron.Scheduler
 	methodTargetScheds map[Method]SchedInfo
-	allMethodTypes     map[string]struct{}
+	allMethodTypes     map[string]empty
 }
 
 func newFetchit() *Fetchit {
 	return &Fetchit{
 		methodTargetScheds: make(map[Method]SchedInfo),
-		allMethodTypes:     make(map[string]struct{}),
+		allMethodTypes:     make(map[string]empty),
 	}
 }
 
@@ -217,71 +219,65 @@ func getMethodTargetScheds(targetConfigs []*TargetConfig, fetchit *Fetchit) *Fet
 			branch: tc.Branch,
 		}
 
-		klog.Infof("Target config: %+v\n", tc)
-
 		if tc.configReload != nil {
 			tc.configReload.initialRun = true
 			fetchit.methodTargetScheds[tc.configReload] = tc.configReload.SchedInfo()
-			fetchit.allMethodTypes[configFileMethod] = struct{}{}
+			fetchit.allMethodTypes[configFileMethod] = empty{}
 		}
-
 		if tc.Clean != nil {
 			fetchit.methodTargetScheds[tc.Clean] = tc.Clean.SchedInfo()
-			fetchit.allMethodTypes[cleanMethod] = struct{}{}
-
+			fetchit.allMethodTypes[cleanMethod] = empty{}
 		}
-
 		if tc.Ansible != nil {
-			fetchit.allMethodTypes[ansibleMethod] = struct{}{}
-			for _, a := range *tc.Ansible {
-				a.initialRun = true
-				a.target = gitTarget
-				fetchit.methodTargetScheds[a] = a.SchedInfo()
-			}
-		}
-		if tc.FileTransfer != nil {
-			fetchit.allMethodTypes[filetransferMethod] = struct{}{}
-			for _, ft := range *tc.FileTransfer {
-				ft.initialRun = true
-				ft.target = gitTarget
-				fetchit.methodTargetScheds[ft] = ft.SchedInfo()
-			}
-		}
-		if tc.Kube != nil {
-			fetchit.allMethodTypes[kubeMethod] = struct{}{}
-			for _, k := range *tc.Kube {
-				k.initialRun = true
-				k.target = gitTarget
-				fetchit.methodTargetScheds[k] = k.SchedInfo()
+			for _, m := range tc.Ansible {
+				fetchit.allMethodTypes[ansibleMethod] = empty{}
+				m.CommonMethod.SetInitialRun(true)
+				m.CommonMethod.SetTarget(gitTarget)
+				fetchit.methodTargetScheds[m] = m.SchedInfo()
 			}
 		}
 		if tc.Raw != nil {
-			fetchit.allMethodTypes[rawMethod] = struct{}{}
-			for _, r := range *tc.Raw {
-				r.initialRun = true
-				r.target = gitTarget
-				fetchit.methodTargetScheds[r] = r.SchedInfo()
+			for _, m := range tc.Raw {
+				fetchit.allMethodTypes[rawMethod] = empty{}
+				m.CommonMethod.SetInitialRun(true)
+				m.CommonMethod.SetTarget(gitTarget)
+				fetchit.methodTargetScheds[m] = m.SchedInfo()
+			}
+		}
+		if tc.FileTransfer != nil {
+			for _, m := range tc.FileTransfer {
+				fetchit.allMethodTypes[filetransferMethod] = empty{}
+				m.CommonMethod.SetInitialRun(true)
+				m.CommonMethod.SetTarget(gitTarget)
+				fetchit.methodTargetScheds[m] = m.SchedInfo()
+			}
+		}
+		if tc.Kube != nil {
+			for _, m := range tc.Kube {
+				fetchit.allMethodTypes[kubeMethod] = empty{}
+				m.CommonMethod.SetInitialRun(true)
+				m.CommonMethod.SetTarget(gitTarget)
+				fetchit.methodTargetScheds[m] = m.SchedInfo()
 			}
 		}
 		if tc.Systemd != nil {
-			fetchit.allMethodTypes[rawMethod] = struct{}{}
-			for _, sd := range *tc.Systemd {
-				sd.initialRun = true
-				sd.target = gitTarget
-				fetchit.methodTargetScheds[sd] = sd.SchedInfo()
+			for _, m := range tc.Systemd {
+				fetchit.allMethodTypes[systemdMethod] = empty{}
+				m.CommonMethod.SetInitialRun(true)
+				m.CommonMethod.SetTarget(gitTarget)
+				fetchit.methodTargetScheds[m] = m.SchedInfo()
 			}
 		}
 	}
 	return fetchit
 }
 
-// This assumes each Target has no more than 1 each of Raw, Systemd, FileTransfer
 func (f *Fetchit) RunTargets() {
 	for method := range f.methodTargetScheds {
 		// ConfigReload, Systemd.AutoUpdateAll, Clean methods do not include git URL
-		if method.GetTarget().url != "" {
-			if err := getClone(method.GetTarget(), f.pat); err != nil {
-				klog.Warningf("Target: %s, clone error: %v, will retry next scheduled run", method.GetTarget().Name, err)
+		if method.Target().url != "" {
+			if err := getClone(method.Target(), f.pat); err != nil {
+				klog.Warningf("Target: %s, clone error: %v, will retry next scheduled run", method.Target().Name, err)
 			}
 		}
 	}
@@ -294,8 +290,8 @@ func (f *Fetchit) RunTargets() {
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		mt := method.GetKind()
-		klog.Infof("Processing Target: %s Method: %s Name: %s", method.GetTarget().Name, mt, method.GetName())
+		mt := method.Type()
+		klog.Infof("Processing Target: %s Method: %s Name: %s", method.Target().Name, mt, method.Name())
 		s.Cron(schedInfo.schedule).Tag(mt).Do(method.Process, ctx, f.conn, f.pat, skew)
 		s.StartImmediately()
 	}

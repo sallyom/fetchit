@@ -22,13 +22,21 @@ type Ansible struct {
 	SshDirectory string `mapstructure:"sshDirectory"`
 }
 
+func (m *Ansible) Name() string {
+	return m.CommonMethod.Name
+}
+
 func (m *Ansible) Type() string {
 	return ansibleMethod
 }
 
+func (m *Ansible) Target() *Target {
+	return m.CommonMethod.target
+}
+
 func (ans *Ansible) Process(ctx, conn context.Context, PAT string, skew int) {
 	time.Sleep(time.Duration(skew) * time.Millisecond)
-	target := ans.GetTarget()
+	target := ans.target
 	target.mu.Lock()
 	defer target.mu.Unlock()
 
@@ -41,7 +49,7 @@ func (ans *Ansible) Process(ctx, conn context.Context, PAT string, skew int) {
 		}
 	}
 
-	err := currentToLatest(ctx, conn, ans, target, &tag)
+	err := currentToLatest(ctx, conn, ans, &tag)
 	if err != nil {
 		klog.Errorf("Error moving current to latest: %v", err)
 		return
@@ -54,8 +62,8 @@ func (ans *Ansible) MethodEngine(ctx context.Context, conn context.Context, chan
 	return ans.ansiblePodman(ctx, conn, path)
 }
 
-func (ans *Ansible) Apply(ctx, conn context.Context, target *Target, currentState, desiredState plumbing.Hash, targetPath string, tags *[]string) error {
-	changeMap, err := applyChanges(ctx, target, currentState, desiredState, targetPath, tags)
+func (ans *Ansible) Apply(ctx, conn context.Context, currentState, desiredState plumbing.Hash, tags *[]string) error {
+	changeMap, err := applyChanges(ctx, ans.target, ans.TargetPath, currentState, desiredState, tags)
 	if err != nil {
 		return err
 	}
@@ -81,7 +89,7 @@ func (ans *Ansible) ansiblePodman(ctx, conn context.Context, path string) error 
 	}
 
 	s := specgen.NewSpecGenerator(sshImage, false)
-	s.Name = "ansible" + "-" + ans.Name
+	s.Name = "ansible" + "-" + ans.CommonMethod.Name
 	s.Privileged = true
 	s.PidNS = specgen.Namespace{
 		NSMode: "host",

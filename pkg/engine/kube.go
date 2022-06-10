@@ -36,8 +36,16 @@ func (m *Kube) Type() string {
 	return kubeMethod
 }
 
+func (m *Kube) Name() string {
+	return m.CommonMethod.Name
+}
+
+func (m *Kube) Target() *Target {
+	return m.CommonMethod.target
+}
+
 func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := k.GetTarget()
+	target := k.Target()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()
@@ -52,7 +60,7 @@ func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {
 		}
 	}
 
-	err := currentToLatest(ctx, conn, k, target, &tag)
+	err := currentToLatest(ctx, conn, k, &tag)
 	if err != nil {
 		klog.Errorf("Error moving current to latest: %v", err)
 		return
@@ -69,8 +77,8 @@ func (k *Kube) MethodEngine(ctx context.Context, conn context.Context, change *o
 	return k.kubePodman(ctx, conn, path, prev)
 }
 
-func (k *Kube) Apply(ctx, conn context.Context, target *Target, currentState, desiredState plumbing.Hash, targetPath string, tags *[]string) error {
-	changeMap, err := applyChanges(ctx, target, currentState, desiredState, targetPath, tags)
+func (k *Kube) Apply(ctx, conn context.Context, currentState, desiredState plumbing.Hash, tags *[]string) error {
+	changeMap, err := applyChanges(ctx, k.target, k.TargetPath, currentState, desiredState, tags)
 	if err != nil {
 		return err
 	}

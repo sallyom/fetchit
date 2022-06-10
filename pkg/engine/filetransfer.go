@@ -23,8 +23,16 @@ func (m *FileTransfer) Type() string {
 	return filetransferMethod
 }
 
+func (m *FileTransfer) Name() string {
+	return m.CommonMethod.Name
+}
+
+func (m *FileTransfer) Target() *Target {
+	return m.CommonMethod.target
+}
+
 func (ft *FileTransfer) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := ft.GetTarget()
+	target := ft.Target()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()
@@ -37,7 +45,7 @@ func (ft *FileTransfer) Process(ctx, conn context.Context, PAT string, skew int)
 		}
 	}
 
-	err := currentToLatest(ctx, conn, ft, target, nil)
+	err := currentToLatest(ctx, conn, ft, nil)
 	if err != nil {
 		klog.Errorf("Error moving current to latest: %v", err)
 		return
@@ -57,8 +65,8 @@ func (ft *FileTransfer) MethodEngine(ctx, conn context.Context, change *object.C
 	return ft.fileTransferPodman(ctx, conn, path, dest, prev)
 }
 
-func (ft *FileTransfer) Apply(ctx, conn context.Context, target *Target, currentState, desiredState plumbing.Hash, targetPath string, tags *[]string) error {
-	changeMap, err := applyChanges(ctx, target, currentState, desiredState, targetPath, tags)
+func (ft *FileTransfer) Apply(ctx, conn context.Context, currentState, desiredState plumbing.Hash, tags *[]string) error {
+	changeMap, err := applyChanges(ctx, ft.target, ft.TargetPath, currentState, desiredState, tags)
 	if err != nil {
 		return err
 	}
@@ -71,7 +79,7 @@ func (ft *FileTransfer) Apply(ctx, conn context.Context, target *Target, current
 func (ft *FileTransfer) fileTransferPodman(ctx, conn context.Context, path, dest string, prev *string) error {
 	if prev != nil {
 		pathToRemove := filepath.Join(dest, filepath.Base(*prev))
-		s := generateSpecRemove(filetransferMethod, filepath.Base(pathToRemove), pathToRemove, dest, ft.Name)
+		s := generateSpecRemove(filetransferMethod, filepath.Base(pathToRemove), pathToRemove, dest, ft.Name())
 		createResponse, err := createAndStartContainer(conn, s)
 		if err != nil {
 			return err
@@ -94,7 +102,7 @@ func (ft *FileTransfer) fileTransferPodman(ctx, conn context.Context, path, dest
 	source := filepath.Join("/opt", path)
 	copyFile := (source + " " + dest)
 
-	s := generateSpec(filetransferMethod, file, copyFile, dest, ft.Name)
+	s := generateSpec(filetransferMethod, file, copyFile, dest, ft.Name())
 	createResponse, err := createAndStartContainer(conn, s)
 	if err != nil {
 		return err

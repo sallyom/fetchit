@@ -20,11 +20,11 @@ type Clean struct {
 	All          bool `mapstructure:"all"`
 }
 
-func (m *Clean) Type() string {
+func (c *Clean) Type() string {
 	return cleanMethod
 }
 
-func (c *Clean) GetName() string {
+func (c *Clean) Name() string {
 	return cleanMethod
 }
 
@@ -32,10 +32,6 @@ func (c *Clean) Target() *Target {
 	return &Target{
 		Name: cleanMethod,
 	}
-}
-
-func (c *Clean) SetTarget(t *Target) {
-	return
 }
 
 func (c *Clean) Process(ctx, conn context.Context, PAT string, skew int) {
@@ -60,7 +56,7 @@ func (c *Clean) MethodEngine(ctx, conn context.Context, change *object.Change, p
 	return nil
 }
 
-func (c *Clean) Apply(ctx, conn context.Context, target *Target, currentState, desiredState plumbing.Hash, targetPath string, tags *[]string) error {
+func (c *Clean) Apply(ctx, conn context.Context, currentState, desiredState plumbing.Hash, tags *[]string) error {
 	return nil
 }
 

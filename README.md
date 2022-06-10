@@ -41,7 +41,7 @@ targetConfigs:
 - name: fetchit
   url: http://github.com/containers/fetchit
   branch: main
-  fileTransfer:
+  filetransfer:
     targetPath: examples/fileTransfer/hello.txt
     destinationDirectory: /tmp
     schedule: "*/1 * * * *" 

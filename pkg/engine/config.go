@@ -33,7 +33,7 @@ func (m *ConfigReload) Type() string {
 	return configFileMethod
 }
 
-func (c *ConfigReload) GetName() string {
+func (c *ConfigReload) Name() string {
 	return configFileMethod
 }
 
@@ -74,7 +74,7 @@ func (c *ConfigReload) MethodEngine(ctx, conn context.Context, change *object.Ch
 	return nil
 }
 
-func (c *ConfigReload) Apply(ctx, conn context.Context, target *Target, currentState, desiredState plumbing.Hash, targetPath string, tags *[]string) error {
+func (c *ConfigReload) Apply(ctx, conn context.Context, currentState, desiredState plumbing.Hash, tags *[]string) error {
 	return nil
 }
 

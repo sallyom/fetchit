@@ -55,6 +55,14 @@ func (m *Systemd) Type() string {
 	return systemdMethod
 }
 
+func (m *Systemd) Name() string {
+	return m.CommonMethod.Name
+}
+
+func (m *Systemd) Target() *Target {
+	return m.CommonMethod.target
+}
+
 func (sd *Systemd) SchedInfo() SchedInfo {
 	// with autoupdate, a schedule is not required
 	if sd.AutoUpdateAll {
@@ -67,7 +75,7 @@ func (sd *Systemd) SchedInfo() SchedInfo {
 }
 
 func (sd *Systemd) Process(ctx, conn context.Context, PAT string, skew int) {
-	target := sd.GetTarget()
+	target := sd.Target()
 	time.Sleep(time.Duration(skew) * time.Millisecond)
 	target.mu.Lock()
 	defer target.mu.Unlock()
@@ -79,7 +87,6 @@ func (sd *Systemd) Process(ctx, conn context.Context, PAT string, skew int) {
 		sd.Enable = true
 		sd.Root = true
 		sd.Restart = false
-		sd.Name = podmanAutoUpdate
 	}
 	tag := []string{".service"}
 	if sd.Restart {
@@ -100,7 +107,7 @@ func (sd *Systemd) Process(ctx, conn context.Context, PAT string, skew int) {
 		}
 	}
 
-	err := currentToLatest(ctx, conn, sd, target, &tag)
+	err := currentToLatest(ctx, conn, sd, &tag)
 	if err != nil {
 		klog.Errorf("Error moving current to latest: %v", err)
 		return
@@ -132,8 +139,8 @@ func (sd *Systemd) MethodEngine(ctx context.Context, conn context.Context, chang
 	return sd.systemdPodman(ctx, conn, path, dest, prev)
 }
 
-func (sd *Systemd) Apply(ctx, conn context.Context, target *Target, currentState, desiredState plumbing.Hash, targetPath string, tags *[]string) error {
-	changeMap, err := applyChanges(ctx, target, currentState, desiredState, targetPath, tags)
+func (sd *Systemd) Apply(ctx, conn context.Context, currentState, desiredState plumbing.Hash, tags *[]string) error {
+	changeMap, err := applyChanges(ctx, sd.target, sd.TargetPath, currentState, desiredState, tags)
 	if err != nil {
 		return err
 	}
@@ -157,15 +164,15 @@ func (sd *Systemd) systemdPodman(ctx context.Context, conn context.Context, path
 	if sd.initialRun {
 		ft := &FileTransfer{
 			CommonMethod: CommonMethod{
-				Name: sd.Name,
+				Name: sd.Name(),
 			},
 		}
 		if err := ft.fileTransferPodman(ctx, conn, path, dest, prev); err != nil {
-			return utils.WrapErr(err, "Error deploying systemd %s file(s), Path: %s", sd.Name, sd.TargetPath)
+			return utils.WrapErr(err, "Error deploying systemd %s file(s), Path: %s", sd.Name(), sd.TargetPath)
 		}
 	}
 	if !sd.Enable {
-		klog.Infof("Systemd target %s successfully processed", sd.Name)
+		klog.Infof("Systemd target %s successfully processed", sd.Name())
 		return nil
 	}
 	if (sd.Enable && !sd.Restart) || sd.initialRun {
@@ -184,7 +191,7 @@ func (sd *Systemd) enableRestartSystemdService(conn context.Context, action, des
 	if action == "autoupdate" {
 		act = "enable"
 	}
-	klog.Infof("Systemd target: %s, running systemctl %s %s", sd.Name, act, service)
+	klog.Infof("Systemd target: %s, running systemctl %s %s", sd.Name(), act, service)
 	if err := detectOrFetchImage(conn, systemdImage, false); err != nil {
 		return err
 	}
@@ -219,7 +226,7 @@ func (sd *Systemd) enableRestartSystemdService(conn context.Context, action, des
 	} else {
 		s.Mounts = []specs.Mount{{Source: dest, Destination: dest, Type: define.TypeBind, Options: []string{"rw"}}, {Source: runMounttmp, Destination: runMounttmp, Type: define.TypeTmpfs, Options: []string{"rw"}}, {Source: runMountc, Destination: runMountc, Type: define.TypeBind, Options: []string{"ro"}}, {Source: runMountsd, Destination: runMountsd, Type: define.TypeBind, Options: []string{"rw"}}}
 	}
-	s.Name = "systemd-" + act + "-" + service + "-" + sd.Name
+	s.Name = "systemd-" + act + "-" + service + "-" + sd.Name()
 	envMap := make(map[string]string)
 	envMap["ROOT"] = strconv.FormatBool(sd.Root)
 	envMap["SERVICE"] = service
@@ -238,6 +245,6 @@ func (sd *Systemd) enableRestartSystemdService(conn context.Context, action, des
 	if err != nil {
 		return err
 	}
-	klog.Infof("Systemd target %s-%s %s complete", sd.Name, act, service)
+	klog.Infof("Systemd target %s-%s %s complete", sd.Name(), act, service)
 	return nil
 }

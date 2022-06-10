@@ -32,6 +32,14 @@ func (m *Raw) Type() string {
 	return rawMethod
 }
 
+func (m *Raw) Name() string {
+	return m.CommonMethod.Name
+}
+
+func (m *Raw) Target() *Target {
+	return m.CommonMethod.target
+}
+
 /* below is an example.json file:
 {"Image":"docker.io/mmumshad/simple-webapp-color:latest",
 "Name": "colors",
@@ -81,7 +89,7 @@ type RawPod struct {
 
 func (r *Raw) Process(ctx context.Context, conn context.Context, PAT string, skew int) {
 	time.Sleep(time.Duration(skew) * time.Millisecond)
-	target := r.GetTarget()
+	target := r.Target()
 	target.mu.Lock()
 	defer target.mu.Unlock()
 
@@ -95,7 +103,7 @@ func (r *Raw) Process(ctx context.Context, conn context.Context, PAT string, ske
 		}
 	}
 
-	err := currentToLatest(ctx, conn, r, target, &tag)
+	err := currentToLatest(ctx, conn, r, &tag)
 	if err != nil {
 		klog.Errorf("Error moving current to latest: %v", err)
 		return
@@ -173,8 +181,8 @@ func (r *Raw) MethodEngine(ctx context.Context, conn context.Context, change *ob
 	return r.rawPodman(ctx, conn, path, prev)
 }
 
-func (r *Raw) Apply(ctx, conn context.Context, target *Target, currentState, desiredState plumbing.Hash, targetPath string, tags *[]string) error {
-	changeMap, err := applyChanges(ctx, target, currentState, desiredState, targetPath, tags)
+func (r *Raw) Apply(ctx, conn context.Context, currentState, desiredState plumbing.Hash, tags *[]string) error {
+	changeMap, err := applyChanges(ctx, r.target, r.TargetPath, currentState, desiredState, tags)
 	if err != nil {
 		return err
 	}
