@@ -22,8 +22,8 @@ type Ansible struct {
 	SshDirectory string `mapstructure:"sshDirectory"`
 }
 
-func (m *Ansible) Name() string {
-	return m.CommonMethod.Name
+func (m *Ansible) GetName() string {
+	return m.Name
 }
 
 func (m *Ansible) Type() string {
@@ -31,7 +31,7 @@ func (m *Ansible) Type() string {
 }
 
 func (m *Ansible) Target() *Target {
-	return m.CommonMethod.target
+	return m.target
 }
 
 func (ans *Ansible) Process(ctx, conn context.Context, PAT string, skew int) {
@@ -89,7 +89,7 @@ func (ans *Ansible) ansiblePodman(ctx, conn context.Context, path string) error 
 	}
 
 	s := specgen.NewSpecGenerator(sshImage, false)
-	s.Name = "ansible" + "-" + ans.CommonMethod.Name
+	s.Name = "ansible" + "-" + ans.GetName()
 	s.Privileged = true
 	s.PidNS = specgen.Namespace{
 		NSMode: "host",

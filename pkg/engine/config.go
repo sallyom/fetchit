@@ -33,7 +33,7 @@ func (m *ConfigReload) Type() string {
 	return configFileMethod
 }
 
-func (c *ConfigReload) Name() string {
+func (c *ConfigReload) GetName() string {
 	return configFileMethod
 }
 

@@ -55,12 +55,12 @@ func (m *Systemd) Type() string {
 	return systemdMethod
 }
 
-func (m *Systemd) Name() string {
-	return m.CommonMethod.Name
+func (m *Systemd) GetName() string {
+	return m.Name
 }
 
 func (m *Systemd) Target() *Target {
-	return m.CommonMethod.target
+	return m.target
 }
 
 func (sd *Systemd) SchedInfo() SchedInfo {
@@ -164,15 +164,15 @@ func (sd *Systemd) systemdPodman(ctx context.Context, conn context.Context, path
 	if sd.initialRun {
 		ft := &FileTransfer{
 			CommonMethod: CommonMethod{
-				Name: sd.Name(),
+				Name: sd.GetName(),
 			},
 		}
 		if err := ft.fileTransferPodman(ctx, conn, path, dest, prev); err != nil {
-			return utils.WrapErr(err, "Error deploying systemd %s file(s), Path: %s", sd.Name(), sd.TargetPath)
+			return utils.WrapErr(err, "Error deploying systemd %s file(s), Path: %s", sd.GetName(), sd.TargetPath)
 		}
 	}
 	if !sd.Enable {
-		klog.Infof("Systemd target %s successfully processed", sd.Name())
+		klog.Infof("Systemd target %s successfully processed", sd.GetName())
 		return nil
 	}
 	if (sd.Enable && !sd.Restart) || sd.initialRun {
@@ -191,7 +191,7 @@ func (sd *Systemd) enableRestartSystemdService(conn context.Context, action, des
 	if action == "autoupdate" {
 		act = "enable"
 	}
-	klog.Infof("Systemd target: %s, running systemctl %s %s", sd.Name(), act, service)
+	klog.Infof("Systemd target: %s, running systemctl %s %s", sd.GetName(), act, service)
 	if err := detectOrFetchImage(conn, systemdImage, false); err != nil {
 		return err
 	}
@@ -226,7 +226,7 @@ func (sd *Systemd) enableRestartSystemdService(conn context.Context, action, des
 	} else {
 		s.Mounts = []specs.Mount{{Source: dest, Destination: dest, Type: define.TypeBind, Options: []string{"rw"}}, {Source: runMounttmp, Destination: runMounttmp, Type: define.TypeTmpfs, Options: []string{"rw"}}, {Source: runMountc, Destination: runMountc, Type: define.TypeBind, Options: []string{"ro"}}, {Source: runMountsd, Destination: runMountsd, Type: define.TypeBind, Options: []string{"rw"}}}
 	}
-	s.Name = "systemd-" + act + "-" + service + "-" + sd.Name()
+	s.Name = "systemd-" + act + "-" + service + "-" + sd.GetName()
 	envMap := make(map[string]string)
 	envMap["ROOT"] = strconv.FormatBool(sd.Root)
 	envMap["SERVICE"] = service
@@ -245,6 +245,6 @@ func (sd *Systemd) enableRestartSystemdService(conn context.Context, action, des
 	if err != nil {
 		return err
 	}
-	klog.Infof("Systemd target %s-%s %s complete", sd.Name(), act, service)
+	klog.Infof("Systemd target %s-%s %s complete", sd.GetName(), act, service)
 	return nil
 }

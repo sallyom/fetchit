@@ -24,7 +24,7 @@ func (c *Clean) Type() string {
 	return cleanMethod
 }
 
-func (c *Clean) Name() string {
+func (c *Clean) GetName() string {
 	return cleanMethod
 }
 

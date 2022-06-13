@@ -32,12 +32,12 @@ func (m *Raw) Type() string {
 	return rawMethod
 }
 
-func (m *Raw) Name() string {
-	return m.CommonMethod.Name
+func (m *Raw) GetName() string {
+	return m.Name
 }
 
 func (m *Raw) Target() *Target {
-	return m.CommonMethod.target
+	return m.target
 }
 
 /* below is an example.json file:

@@ -291,7 +291,7 @@ func (f *Fetchit) RunTargets() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		mt := method.Type()
-		klog.Infof("Processing Target: %s Method: %s Name: %s", method.Target().Name, mt, method.Name())
+		klog.Infof("Processing Target: %s Method: %s Name: %s", method.Target().Name, mt, method.GetName())
 		s.Cron(schedInfo.schedule).Tag(mt).Do(method.Process, ctx, f.conn, f.pat, skew)
 		s.StartImmediately()
 	}

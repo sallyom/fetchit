@@ -11,7 +11,7 @@ import (
 
 type Method interface {
 	Type() string
-	Name() string
+	GetName() string
 	Target() *Target
 	Process(ctx context.Context, conn context.Context, PAT string, skew int)
 	Apply(ctx context.Context, conn context.Context, currentState plumbing.Hash, desiredState plumbing.Hash, tags *[]string) error

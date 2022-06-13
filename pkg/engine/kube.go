@@ -36,12 +36,12 @@ func (m *Kube) Type() string {
 	return kubeMethod
 }
 
-func (m *Kube) Name() string {
-	return m.CommonMethod.Name
+func (m *Kube) GetName() string {
+	return m.Name
 }
 
 func (m *Kube) Target() *Target {
-	return m.CommonMethod.target
+	return m.target
 }
 
 func (k *Kube) Process(ctx, conn context.Context, PAT string, skew int) {

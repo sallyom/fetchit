@@ -23,12 +23,12 @@ func (m *FileTransfer) Type() string {
 	return filetransferMethod
 }
 
-func (m *FileTransfer) Name() string {
-	return m.CommonMethod.Name
+func (m *FileTransfer) GetName() string {
+	return m.Name
 }
 
 func (m *FileTransfer) Target() *Target {
-	return m.CommonMethod.target
+	return m.target
 }
 
 func (ft *FileTransfer) Process(ctx, conn context.Context, PAT string, skew int) {
@@ -79,7 +79,7 @@ func (ft *FileTransfer) Apply(ctx, conn context.Context, currentState, desiredSt
 func (ft *FileTransfer) fileTransferPodman(ctx, conn context.Context, path, dest string, prev *string) error {
 	if prev != nil {
 		pathToRemove := filepath.Join(dest, filepath.Base(*prev))
-		s := generateSpecRemove(filetransferMethod, filepath.Base(pathToRemove), pathToRemove, dest, ft.Name())
+		s := generateSpecRemove(filetransferMethod, filepath.Base(pathToRemove), pathToRemove, dest, ft.GetName())
 		createResponse, err := createAndStartContainer(conn, s)
 		if err != nil {
 			return err
@@ -102,7 +102,7 @@ func (ft *FileTransfer) fileTransferPodman(ctx, conn context.Context, path, dest
 	source := filepath.Join("/opt", path)
 	copyFile := (source + " " + dest)
 
-	s := generateSpec(filetransferMethod, file, copyFile, dest, ft.Name())
+	s := generateSpec(filetransferMethod, file, copyFile, dest, ft.GetName())
 	createResponse, err := createAndStartContainer(conn, s)
 	if err != nil {
 		return err

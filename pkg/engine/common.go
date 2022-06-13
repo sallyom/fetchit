@@ -13,7 +13,7 @@ import (
 )
 
 type CommonMethod struct {
-	// Name must be unique within target Raw methods
+	// Name must be unique within target methods of same type
 	Name string `mapstructure:"name"`
 	// Schedule is how often to check for git updates and/or restart the fetchit service
 	// Must be valid cron expression
@@ -78,7 +78,7 @@ func currentToLatest(ctx, conn context.Context, m Method, tag *[]string) error {
 		return fmt.Errorf("Failed to get latest commit: %v", err)
 	}
 
-	current, err := getCurrent(target, m.Type(), m.Name())
+	current, err := getCurrent(target, m.Type(), m.GetName())
 	if err != nil {
 		return fmt.Errorf("Failed to get current commit: %v", err)
 	}
@@ -89,8 +89,8 @@ func currentToLatest(ctx, conn context.Context, m Method, tag *[]string) error {
 			return fmt.Errorf("Failed to apply changes: %v", err)
 		}
 
-		updateCurrent(ctx, target, latest, m.Type(), m.Name())
-		klog.Infof("Moved %s %s from %s to %s for target %s", m.Type(), m.Name(), current, latest, target.Name)
+		updateCurrent(ctx, target, latest, m.Type(), m.GetName())
+		klog.Infof("Moved %s %s from %s to %s for target %s", m.Type(), m.GetName(), current, latest, target.Name)
 	} else {
 		klog.Infof("No changes applied to target %s this run, %s currently at %s", target.Name, m.Type(), current)
 	}
