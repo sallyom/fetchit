@@ -3,7 +3,7 @@ prune:
   Volumes: false
   schedule: "*/1 * * * *"
 targetConfigs:
-- url: http://github.com/containers/fetchit
+- url: http://localhost:10080/sallyom/fetchit-local
   raw:
   - name: raw-ex
     targetPath: examples/raw

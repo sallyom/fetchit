@@ -1,5 +1,5 @@
 targetConfigs:
-- url: https://github.com/containers/fetchit
+- url: https://localhost:10080/sallyom/fetchit-local
   systemd:
   - name: httpd-user
     targetPath: examples/systemd

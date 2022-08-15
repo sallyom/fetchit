@@ -1,5 +1,5 @@
 targetConfigs:
-- url: https://github.com/sallyom/fetchit
+- url: https://localhost:10080/sallyom/fetchit-local
   verifyCommitsInfo:
     GitsignVerify: true
   filetransfer:

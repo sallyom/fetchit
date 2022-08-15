@@ -1,5 +1,5 @@
 targetConfigs:
-- url: http://github.com/containers/fetchit
+- url: http://localhost:10080/sallyom/fetchit-local
   ansible:
     - name: ansible
       targetPath: examples/ansible
