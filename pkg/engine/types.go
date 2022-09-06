@@ -20,6 +20,7 @@ type Method interface {
 
 // FetchitConfig requires necessary objects to process targets
 type FetchitConfig struct {
+	GitAuth          *GitAuth          `mapstructure:"gitAuth"`
 	TargetConfigs    []*TargetConfig   `mapstructure:"targetConfigs"`
 	ConfigReload     *ConfigReload     `mapstructure:"configReload"`
 	Prune            *Prune            `mapstructure:"prune"`
@@ -52,6 +53,7 @@ type TargetConfig struct {
 }
 
 type Target struct {
+	ssh             bool
 	url             string
 	pat             string
 	username        string

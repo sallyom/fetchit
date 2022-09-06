@@ -13,6 +13,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -36,6 +37,9 @@ type Fetchit struct {
 	// conn holds podman client
 	conn               context.Context
 	volume             string
+	ssh                bool
+	username           string
+	password           string
 	pat                string
 	restartFetchit     bool
 	scheduler          *gocron.Scheduler
@@ -136,6 +140,17 @@ func (fc *FetchitConfig) populateFetchit(config *FetchitConfig) *Fetchit {
 			config.TargetConfigs = append(config.TargetConfigs, reload)
 		}
 	}
+
+	// Check for ssh file
+	if config.GitAuth != nil {
+		if config.GitAuth.SSH {
+			if err := checkForPrivateKey(); err != nil {
+				cobra.CheckErr(err)
+			}
+			fetchit.ssh = true
+		}
+	}
+
 	if config.Prune != nil {
 		prune := &TargetConfig{
 			prune: config.Prune,
@@ -229,6 +244,7 @@ func (fc *FetchitConfig) InitConfig(initial bool) *Fetchit {
 	return fc.populateFetchit(config)
 }
 
+// Takes target from user and converts it for internal use
 func getMethodTargetScheds(targetConfigs []*TargetConfig, fetchit *Fetchit) *Fetchit {
 	for _, tc := range targetConfigs {
 		tc.mu.Lock()
@@ -237,6 +253,7 @@ func getMethodTargetScheds(targetConfigs []*TargetConfig, fetchit *Fetchit) *Fet
 			url:          tc.Url,
 			device:       tc.Device,
 			pat:          tc.Pat,
+			ssh:          fetchit.ssh,
 			username:     tc.Username,
 			password:     tc.Password,
 			branch:       tc.Branch,
@@ -368,14 +385,14 @@ func getClone(target *Target) error {
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-
 	if !exists {
 		logger.Infof("git clone %s %s --recursive", target.url, target.branch)
 		if target.pat != "" {
 			target.username = "fetchit"
 			target.password = target.pat
 		}
-		_, err = git.PlainClone(absPath, false, &git.CloneOptions{
+		// default to using existing http method
+		var cOptions = &git.CloneOptions{
 			Auth: &githttp.BasicAuth{
 				Username: target.username, // the value of this field should not matter when using a PAT
 				Password: target.password,
@@ -383,7 +400,18 @@ func getClone(target *Target) error {
 			URL:           target.url,
 			ReferenceName: plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", target.branch)),
 			SingleBranch:  true,
-		})
+		}
+		// if using ssh, change auth to use ssh key
+		if target.ssh {
+			logger.Infof("git clone %s ", target.url)
+			authValue, err := ssh.NewPublicKeysFromFile("git", defaultSSHPath, target.password)
+			if err != nil {
+				logger.Infof("generate publickeys failed: %s\n", err.Error())
+				return err
+			}
+			cOptions.Auth = authValue
+		}
+		_, err = git.PlainClone(absPath, false, cOptions)
 		if err != nil {
 			return err
 		}
