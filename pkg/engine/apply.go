@@ -87,7 +87,7 @@ func getLatest(target *Target) (plumbing.Hash, error) {
 	// if using ssh, change auth to use ssh key
 	if target.ssh {
 		logger.Infof("git clone %s ", target.url)
-		authValue, err := ssh.NewPublicKeysFromFile("git", defaultSSHPath, target.password)
+		authValue, err := ssh.NewPublicKeysFromFile("git", target.sshKey, target.password)
 		if err != nil {
 			logger.Infof("generate publickeys failed: %s\n", err.Error())
 			return plumbing.Hash{}, err
