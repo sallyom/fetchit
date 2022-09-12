@@ -147,13 +147,8 @@ func (fc *FetchitConfig) populateFetchit(config *FetchitConfig) *Fetchit {
 	// Check for ssh file
 	logger.Infof("config.gitauth is: %v", config.GitAuth)
 	if config.GitAuth != nil {
-<<<<<<< HEAD
 		// GitAuth exists in config
 		keyPath := defaultSSHKey
-		//logger.Infof("config.gitauth.ssh is: %v", config.GitAuth.SSH)
-=======
-		keyPath := defaultSSHKey
->>>>>>> 727a75c (move pat,username,pw to GitAuth)
 		if config.GitAuth.SSH {
 			if config.GitAuth.SSHKeyFile != "" {
 				keyPath = filepath.Join("/opt", ".ssh", config.GitAuth.SSHKeyFile)
@@ -164,10 +159,6 @@ func (fc *FetchitConfig) populateFetchit(config *FetchitConfig) *Fetchit {
 			fetchit.ssh = true
 			fetchit.sshKey = keyPath
 		}
-<<<<<<< HEAD
-=======
-		fetchit.sshKey = keyPath
->>>>>>> 727a75c (move pat,username,pw to GitAuth)
 		fetchit.username = config.GitAuth.Username
 		fetchit.password = config.GitAuth.Password
 		fetchit.pat = config.GitAuth.PAT
@@ -438,10 +429,6 @@ func getClone(target *Target) error {
 		if err := cOptions.Validate(); err != nil {
 			return err
 		}
-<<<<<<< HEAD
-		logger.Infof("absPath is: %v", absPath)
-=======
->>>>>>> 727a75c (move pat,username,pw to GitAuth)
 		_, err = git.PlainClone(absPath, false, cOptions)
 		if err != nil {
 			logger.Infof("plainclone is returning error")
