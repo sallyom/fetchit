@@ -15,6 +15,11 @@ IMAGE :=quay.io/fetchit/fetchit-amd:latest
 IMAGE_ARM :=quay.io/fetchit/fetchit-arm:latest
 ARCH := $(shell uname -m |sed -e "s/x86_64/amd64/" |sed -e "s/aarch64/arm64/")
 
+# for building SBOM
+SYFT_IMAGE :=quay.io/fetchit/syft:latest
+SBOM_OUTPUT_FORMAT :=github
+DIGEST := $(shell $(CTR_CMD) inspect --format "{{.Digest}}" $(IMAGE) | awk -F ':' '{print $$2}' | head -c 9)
+
 # restrict included verify-* targets to only process project files
 GO_PACKAGES=$(go list ./cmd/... ./pkg/engine/...)
 
@@ -98,14 +103,15 @@ build-containerized-cross-build:
 ###############################
 # sbom targets                #
 ###############################
-
-build_containerized_sbom_amd: _build_containerized_amd
+syft: 
 	@if [ -z '$(CTR_CMD)' ] ; then echo '!! ERROR: containerized builds require podman||docker CLI, none found $$PATH' >&2 && exit 1; fi
-	@if [ -z '$(DIGEST)' ] ; then echo '!! ERROR: containerized builds require podman||docker CLI, none found $$PATH' >&2 && exit 1; fi
-	$(CTR_CMD) build . --file Dockerfile.sbom --tag $(IMAGE) \
-		--build-arg ARCH="arm64" \
-		--build-arg MAKE_TARGET="cross-build-linux-arm64" \
-.PHONY: build_containerized_sbom_amd
+	$(CTR_CMD) build -f Dockerfile.syft --tag quay.io/fetchit/syft:latest \
+		--platform="linux/amd64"
+.PHONY: syft
+
+sbom:
+	$(CTR_CMD) run $(SYFT_IMAGE) syft -v $(IMAGE) -o $(SBOM_OUTPUT_FORMAT) >  sbom-$(DIGEST)
+.PHONY: sbom
 
 ###############################
 # ansible targets             #
