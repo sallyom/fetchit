@@ -11,6 +11,8 @@ SRC_ROOT :=$(shell pwd)
 OUTPUT_DIR :=_output
 CROSS_BUILD_BINDIR :=$(OUTPUT_DIR)/bin
 CTR_CMD :=$(or $(shell which podman 2>/dev/null), $(shell which docker 2>/dev/null))
+IMAGE :=quay.io/fetchit/fetchit-amd:latest
+IMAGE_ARM :=quay.io/fetchit/fetchit-arm:latest
 ARCH := $(shell uname -m |sed -e "s/x86_64/amd64/" |sed -e "s/aarch64/arm64/")
 
 # restrict included verify-* targets to only process project files
@@ -31,7 +33,7 @@ GO_LD_FLAGS := $(GC_FLAGS) -ldflags "-X k8s.io/component-base/version.gitMajor=0
 GO_BUILD_FLAGS :=-tags 'include_gcs include_oss containers_image_openpgp gssapi providerless netgo osusergo exclude_graphdriver_btrfs'
 
 # targets "all:" and "build:" defined in vendor/github.com/openshift/build-machinery-go/make/targets/golang/build.mk
-fetchit: build-containerized-cross-build-linux-amd64
+fetchit:  build-containerized-cross-build-linux-amd64
 .PHONY: fetchit
 
 
@@ -64,7 +66,7 @@ cross-build: cross-build-linux-amd64 cross-build-linux-arm64
 ###############################
 _build_containerized_amd:
 	@if [ -z '$(CTR_CMD)' ] ; then echo '!! ERROR: containerized builds require podman||docker CLI, none found $$PATH' >&2 && exit 1; fi
-	$(CTR_CMD) build . --file Dockerfile --tag quay.io/fetchit/fetchit-amd:latest \
+	$(CTR_CMD) build . --file Dockerfile --tag $(IMAGE) \
 		--build-arg ARCH=amd64 \
 		--build-arg MAKE_TARGET="cross-build-linux-amd64" \
 		--platform="linux/amd64"
@@ -73,7 +75,7 @@ _build_containerized_amd:
 
 _build_containerized_arm:
 	@if [ -z '$(CTR_CMD)' ] ; then echo '!! ERROR: containerized builds require podman||docker CLI, none found $$PATH' >&2 && exit 1; fi
-	$(CTR_CMD) build . --file Dockerfile --tag quay.io/fetchit/fetchit-arm:latest \
+	$(CTR_CMD) build . --file Dockerfile --tag $(IMAGE_ARM) \
 		--build-arg ARCH=arm64 \
 		--build-arg MAKE_TARGET="cross-build-linux-arm64" \
 		--platform="linux/arm64"
@@ -92,6 +94,18 @@ build-containerized-cross-build:
 	+$(MAKE) build-containerized-cross-build-linux-amd64
 	+$(MAKE) build-containerized-cross-build-linux-arm64
 .PHONY: build-containerized-cross-build
+
+###############################
+# sbom targets                #
+###############################
+
+build_containerized_sbom_amd: _build_containerized_amd
+	@if [ -z '$(CTR_CMD)' ] ; then echo '!! ERROR: containerized builds require podman||docker CLI, none found $$PATH' >&2 && exit 1; fi
+	@if [ -z '$(DIGEST)' ] ; then echo '!! ERROR: containerized builds require podman||docker CLI, none found $$PATH' >&2 && exit 1; fi
+	$(CTR_CMD) build . --file Dockerfile.sbom --tag $(IMAGE) \
+		--build-arg ARCH="arm64" \
+		--build-arg MAKE_TARGET="cross-build-linux-arm64" \
+.PHONY: build_containerized_sbom_amd
 
 ###############################
 # ansible targets             #

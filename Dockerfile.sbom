@@ -1,0 +1,17 @@
+# BUILD STAGE
+FROM registry.access.redhat.com/ubi8/go-toolset as builder
+
+USER root
+ARG FETCHIT_IMAGE
+
+RUN curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin 
+RUN /usr/local/bin/syft -v quay.io/fetchit/fetchit-amd:latest -o github > /tmp/sbom
+
+# RUN STAGE
+FROM $FETCHIT_IMAGE
+
+COPY --from=builder /tmp/sbom /opt/sbom
+
+WORKDIR /opt
+
+CMD ["/usr/local/bin/fetchit", "start"]
