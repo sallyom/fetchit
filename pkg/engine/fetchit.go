@@ -38,6 +38,7 @@ type Fetchit struct {
 	conn               context.Context
 	volume             string
 	ssh                bool
+	sshKey             string
 	username           string
 	password           string
 	pat                string
@@ -89,7 +90,7 @@ func (fc *FetchitConfig) Restart() {
 	fetchit.RunTargets()
 }
 
-func populateConfig(v *viper.Viper) (*FetchitConfig, bool, error) {
+func readConfig(v *viper.Viper) (*FetchitConfig, bool, error) {
 	config := newFetchitConfig()
 	configDir := filepath.Dir(defaultConfigPath)
 	configName := filepath.Base(defaultConfigPath)
@@ -120,6 +121,8 @@ func (fc *FetchitConfig) populateFetchit(config *FetchitConfig) *Fetchit {
 		fc.conn = conn
 	}
 	fetchit.conn = fc.conn
+	// not working bc setting var to nil value
+	//fetchit.ssh = fc.GitAuth.SSH
 
 	if err := detectOrFetchImage(fc.conn, fetchitImage, false); err != nil {
 		cobra.CheckErr(err)
@@ -142,13 +145,24 @@ func (fc *FetchitConfig) populateFetchit(config *FetchitConfig) *Fetchit {
 	}
 
 	// Check for ssh file
+	logger.Infof("config.gitauth is: %v", config.GitAuth)
 	if config.GitAuth != nil {
+		// GitAuth exists in config
+		keyPath := defaultSSHKey
+		//logger.Infof("config.gitauth.ssh is: %v", config.GitAuth.SSH)
 		if config.GitAuth.SSH {
-			if err := checkForPrivateKey(); err != nil {
+			if config.GitAuth.SSHKeyFile != "" {
+				keyPath = filepath.Join("/opt", ".ssh", config.GitAuth.SSHKeyFile)
+			}
+			if err := checkForPrivateKey(keyPath); err != nil {
 				cobra.CheckErr(err)
 			}
 			fetchit.ssh = true
+			fetchit.sshKey = keyPath
 		}
+		fetchit.username = config.GitAuth.Username
+		fetchit.password = config.GitAuth.Password
+		fetchit.pat = config.GitAuth.PAT
 	}
 
 	if config.Prune != nil {
@@ -188,7 +202,7 @@ func isLocalConfig(v *viper.Viper) (*FetchitConfig, bool, error) {
 		logger.Infof("Local config file not found: %v", err)
 		return nil, false, err
 	}
-	return populateConfig(v)
+	return readConfig(v)
 }
 
 // Initconfig reads in config file and env variables if set.
@@ -200,9 +214,6 @@ func (fc *FetchitConfig) InitConfig(initial bool) *Fetchit {
 	var isLocal, exists bool
 	var config *FetchitConfig
 	envURL := os.Getenv("FETCHIT_CONFIG_URL")
-	pat := ""
-	username := ""
-	password := ""
 
 	// user will pass path on local system, but it must be mounted at the defaultConfigPath in fetchit pod
 	// regardless of where the config file is on the host, fetchit will read the configFile from within
@@ -220,7 +231,7 @@ func (fc *FetchitConfig) InitConfig(initial bool) *Fetchit {
 		// Only run this from initial startup and only after trying to populate the config from a local file.
 		// because CheckForConfigUpdates also runs with each processConfig, so if !initial this is already done
 		// If configURL is passed in, a config file on disk has priority on the initial run.
-		_ = checkForConfigUpdates(envURL, false, true, pat, username, password)
+		_ = checkForConfigUpdates(envURL, false, true, "", "", "")
 	}
 
 	// if config is not yet populated, fc.CheckForConfigUpdates has placed the config
@@ -228,7 +239,7 @@ func (fc *FetchitConfig) InitConfig(initial bool) *Fetchit {
 	if !isLocal {
 		// If not initial run, only way to get here is if already determined need for reload
 		// with an updated config placed in defaultConfigPath.
-		config, exists, err = populateConfig(v)
+		config, exists, err = readConfig(v)
 		if config == nil || !exists || err != nil {
 			if err != nil {
 				cobra.CheckErr(fmt.Errorf("Could not populate config, tried %s in fetchit pod and also URL: %s. Ensure local config is mounted or served from a URL and try again.", defaultConfigPath, envURL))
@@ -252,10 +263,11 @@ func getMethodTargetScheds(targetConfigs []*TargetConfig, fetchit *Fetchit) *Fet
 		internalTarget := &Target{
 			url:          tc.Url,
 			device:       tc.Device,
-			pat:          tc.Pat,
+			pat:          fetchit.pat,
 			ssh:          fetchit.ssh,
-			username:     tc.Username,
-			password:     tc.Password,
+			sshKey:       fetchit.sshKey,
+			username:     fetchit.username,
+			password:     fetchit.password,
 			branch:       tc.Branch,
 			disconnected: tc.Disconnected,
 		}
@@ -392,7 +404,7 @@ func getClone(target *Target) error {
 			target.password = target.pat
 		}
 		// default to using existing http method
-		var cOptions = &git.CloneOptions{
+		cOptions := &git.CloneOptions{
 			Auth: &githttp.BasicAuth{
 				Username: target.username, // the value of this field should not matter when using a PAT
 				Password: target.password,
@@ -402,17 +414,26 @@ func getClone(target *Target) error {
 			SingleBranch:  true,
 		}
 		// if using ssh, change auth to use ssh key
+		logger.Infof("target.ssh is %v", target.ssh)
 		if target.ssh {
 			logger.Infof("git clone %s ", target.url)
-			authValue, err := ssh.NewPublicKeysFromFile("git", defaultSSHPath, target.password)
+			authValue, err := ssh.NewPublicKeysFromFile("git", target.sshKey, target.password)
 			if err != nil {
 				logger.Infof("generate publickeys failed: %s\n", err.Error())
 				return err
 			}
+			//logger.Infof("coptions are: %v", cOptions)
 			cOptions.Auth = authValue
+			//logger.Infof("coptions are: %v", cOptions)
+			//logger.Infof("coptions from auth are: %v", cOptions.Auth)
 		}
+		if err := cOptions.Validate(); err != nil {
+			return err
+		}
+		logger.Infof("absPath is: %v", absPath)
 		_, err = git.PlainClone(absPath, false, cOptions)
 		if err != nil {
+			logger.Infof("plainclone is returning error")
 			return err
 		}
 	}

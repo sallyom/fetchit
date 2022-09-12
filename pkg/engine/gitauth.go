@@ -5,18 +5,19 @@ import (
 	"path/filepath"
 )
 
-var defaultSSHPath = filepath.Join("/opt", "mount", ".ssh", "id_rsa")
+var defaultSSHKey = filepath.Join("/opt", ".ssh", "id_rsa")
 
 // Basic type needed for ssh authentication
 type GitAuth struct {
-	SSH bool
-	// 	username string
-	// 	password string
-	// 	pat      string
+	SSH        bool   `mapstructure:"ssh"`
+	SSHKeyFile string `mapstructure:"sshKeyFile"`
+	Username   string `mapstructure:"username"`
+	Password   string `mapstructure:"password"`
+	PAT        string `mapstructure:"pat"`
 }
 
-func checkForPrivateKey() error {
-	if _, err := os.Stat(defaultSSHPath); err != nil {
+func checkForPrivateKey(path string) error {
+	if _, err := os.Stat(path); err != nil {
 		return err
 	}
 	return nil

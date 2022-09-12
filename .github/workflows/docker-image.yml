@@ -594,6 +594,44 @@ jobs:
       - name: ensure container is gone
         run: sudo podman ps -a
 
+  ssh-validate:
+    runs-on: ubuntu-latest
+    needs: [ build , pull-and-archive ]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: pull in podman
+        uses: actions/download-artifact@v1
+        with:
+          name: podman-bins
+          path: bin
+
+      - name: replace
+        run: |
+          chmod +x bin/podman
+          sudo mv bin/podman /usr/bin/podman
+
+      - name: Enable the podman socket
+        run: sudo systemctl enable --now podman.socket
+
+      - name: pull artifact
+        uses: actions/download-artifact@v1
+        with:
+          name: fetchit-image
+          path: /tmp
+
+      - name: Load the image
+        run: sudo podman load -i /tmp/fetchit.tar
+
+      - name: Create destination directory
+        run: sudo mkdir /tmp/ft
+
+      - name: tag the image
+        run: sudo podman tag quay.io/fetchit/fetchit-amd:latest quay.io/fetchit/fetchit:latest
+
+      - name: Start fetchit
+        run: sudo podman run -d --name fetchit -v fetchit-volume:/opt -v ./examples/filetransfer-config.yaml:/opt/mount/config.yaml -v ./examples/git-ssh:/opt/.ssh -v /run/podman/podman.sock:/run/podman/podman.sock -e SSH_KNOWN_HOSTS=/opt/.ssh/known_hosts --security-opt label=disable quay.io/fetchit/fetchit-amd:latest
+
   systemd-validate:
     runs-on: ubuntu-latest
     needs: [ build, build-systemd-amd ]
