@@ -6,7 +6,7 @@ configReload:
   configURL: https://raw.githubusercontent.com/sallyom/fetchit/main/examples/config-reload.yaml
   schedule: "*/2 * * * *"
 targetConfigs:
-- url: https://github.com/containers/fetchit
+- url: https://github.com/sallyom/fetchit
   filetransfer:
   - name: ft-ex
     targetPath: examples/filetransfer
