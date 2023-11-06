@@ -7,9 +7,9 @@ configReload:
   schedule: "*/2 * * * *"
 targetConfigs:
 - url: https://github.com/containers/fetchit
-  raw:
-  - name: raw-ex
-    targetPath: examples/raw
+  filetransfer:
+  - name: ft-ex
+    targetPath: examples/filetransfer
+    destinationDirectory: /tmp/ft
     schedule: "*/1 * * * *"
-    pullImage: false
   branch: main
