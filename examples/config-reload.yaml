@@ -12,4 +12,8 @@ targetConfigs:
     targetPath: examples/filetransfer
     destinationDirectory: /tmp/ft
     schedule: "*/1 * * * *"
+  - name: ft-ex
+    targetPath: examples/filetransfer
+    destinationDirectory: /tmp/ft-2
+    schedule: "*/1 * * * *"
   branch: main
