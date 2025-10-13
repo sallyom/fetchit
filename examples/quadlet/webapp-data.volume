@@ -1,0 +1,24 @@
+# WebApp Data Volume Quadlet File
+# This file defines a persistent volume for the web application
+
+[Unit]
+Description=WebApp Data Volume
+# Ensure volume is created before the container that uses it
+Before=nginx.service
+
+[Volume]
+# Volume labels for metadata
+Label=app=webapp
+Label=environment=production
+Label=managed-by=fetchit
+
+# Volume driver (default is 'local')
+Driver=local
+
+# Driver-specific options (optional)
+# Options=type=tmpfs
+# Options=device=tmpfs
+
+[Install]
+# When to create this volume
+WantedBy=multi-user.target

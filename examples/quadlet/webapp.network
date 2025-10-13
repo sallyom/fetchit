@@ -1,0 +1,36 @@
+# WebApp Private Network Quadlet File
+# This file defines a custom container network
+
+[Unit]
+Description=WebApp Private Network
+# Ensure network is created before containers that use it
+Before=nginx.service
+
+[Network]
+# Network subnet in CIDR notation
+Subnet=10.88.0.0/16
+
+# Gateway IP address
+Gateway=10.88.0.1
+
+# Allocatable IP range (optional)
+# IPRange=10.88.1.0/24
+
+# Network labels for metadata
+Label=app=webapp
+Label=environment=production
+Label=managed-by=fetchit
+
+# Network driver (default is 'bridge')
+Driver=bridge
+
+# Driver-specific options (optional)
+# Options=com.docker.network.bridge.name=webapp-bridge
+
+# Custom DNS servers (optional)
+# DNS=8.8.8.8
+# DNS=8.8.4.4
+
+[Install]
+# When to create this network
+WantedBy=multi-user.target

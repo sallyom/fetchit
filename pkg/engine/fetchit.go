@@ -343,6 +343,14 @@ func getMethodTargetScheds(targetConfigs []*TargetConfig, fetchit *Fetchit) *Fet
 				fetchit.methodTargetScheds[sd] = sd.SchedInfo()
 			}
 		}
+		if len(tc.Quadlet) > 0 {
+			fetchit.allMethodTypes[quadletMethod] = struct{}{}
+			for _, q := range tc.Quadlet {
+				q.initialRun = true
+				q.target = internalTarget
+				fetchit.methodTargetScheds[q] = q.SchedInfo()
+			}
+		}
 	}
 	return fetchit
 }
