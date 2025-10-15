@@ -4,7 +4,7 @@ The YAML configuration file defines git targets and the methods to use, how freq
 and various configuration values that relate to that method.
 
 A target is a unique value that holds methods. Mutiple git targets (targetConfigs) can be defined. Methods that can be configured
-include `Raw`, `Systemd`, `Kube`, `Ansible`, `FileTransfer`, `Prune`, and `ConfigReload`.
+include `Raw`, `Systemd`, `Quadlet`, `Kube`, `Ansible`, `FileTransfer`, `Prune`, and `ConfigReload`.
 
 Examples of all methods are located in the `FetchIt repository <https://github.com/containers/fetchit/tree/main/examples>`_
 
@@ -234,6 +234,105 @@ SystemdTarget is a method that will place, enable, and restart systemd unit file
        root: true
        enable: true
        schedule: "*/5 * * * *"
+
+Quadlet
+-------
+The Quadlet method is the modern, recommended approach for managing Podman containers with systemd.
+Quadlet is Podman's native systemd integration (introduced in Podman 4.4+) that replaces the deprecated
+`podman generate systemd` command. Quadlet uses declarative `.container`, `.volume`, and `.network` files
+to define container deployments, which systemd automatically converts to systemd units.
+
+**Requirements:**
+- Podman 4.4+ (4.9+ recommended)
+- systemd
+- cgroup v2
+- Go 1.22+ (for building FetchIt)
+
+**Key Features:**
+- Declarative container configuration using Quadlet unit files
+- Automatic systemd service generation via `daemon-reload`
+- Support for root mode (`/etc/containers/systemd/`) and user mode (`~/.config/containers/systemd/`)
+- Automatic service lifecycle management (enable, start, restart, stop)
+- Git-based configuration management with change detection
+
+.. code-block:: yaml
+
+   targetConfigs:
+   - url: https://github.com/containers/fetchit
+     branch: main
+     quadlet:
+     - name: web-services
+       targetPath: examples/quadlet
+       glob: "*.container"
+       schedule: "*/10 * * * *"
+       root: true
+       enable: true
+       restart: true
+
+**Configuration Fields:**
+
+- **name**: Unique identifier for this Quadlet method instance
+- **targetPath**: Directory in git repository containing Quadlet files
+- **glob**: Pattern to filter files (e.g., `*.container`, `web-*.container`, `*.{container,volume,network}`)
+- **schedule**: Cron expression for periodic synchronization
+- **root**: Boolean - If `true`, deploys to `/etc/containers/systemd/` (requires root). If `false`, deploys to `~/.config/containers/systemd/` (user mode)
+- **enable**: Boolean - If `true`, enables systemd services (auto-start on boot). If `false`, only deploys files
+- **restart**: Boolean - If `true`, restarts services when Quadlet files are updated (implies enable=true)
+
+**Example Quadlet Files:**
+
+A `.container` file defines a container deployment:
+
+.. code-block:: ini
+
+   [Unit]
+   Description=Nginx Web Server
+   After=network-online.target
+
+   [Container]
+   Image=docker.io/nginx:latest
+   PublishPort=8080:80
+   Volume=webapp-data.volume:/usr/share/nginx/html:Z
+   Network=webapp.network
+   Environment=NGINX_PORT=80
+
+   [Service]
+   Restart=always
+   TimeoutStartSec=300
+
+   [Install]
+   WantedBy=multi-user.target default.target
+
+A `.volume` file defines persistent storage:
+
+.. code-block:: ini
+
+   [Unit]
+   Description=Web Application Data Volume
+
+   [Volume]
+   User=1000
+   Group=1000
+
+A `.network` file defines container networking:
+
+.. code-block:: ini
+
+   [Unit]
+   Description=Web Application Network
+
+   [Network]
+   Subnet=10.88.0.0/16
+   Gateway=10.88.0.1
+   Label=app=webapp
+
+**When to Use Quadlet vs Systemd:**
+
+- **Use Quadlet** for new container deployments with modern Podman (4.4+). Quadlet provides a cleaner, more maintainable approach for container lifecycle management.
+- **Use Systemd** for existing deployments or when you need custom systemd unit files beyond container management.
+- Both methods can coexist in the same targetConfig for gradual migration.
+
+See the `Quadlet documentation <https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html>`_ for detailed Quadlet syntax and options.
 
 File Transfer
 -------------

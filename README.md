@@ -1,10 +1,80 @@
-# Fetchit
-The purpose of FetchIt is to allow for GitOps management of podman managed containers.
+# FetchIt
+The purpose of FetchIt is to allow for GitOps management of Podman-managed containers.
 
-This project is currently under development. For a more detailed explanation of the project visit the docs page.
+FetchIt enables declarative container lifecycle management by tracking git repositories containing configuration files for various deployment methods including Raw, Systemd, **Quadlet** (new!), Kube, Ansible, and FileTransfer.
+
+This project is currently under development. For a more detailed explanation of the project, visit the docs page:
 https://fetchit.readthedocs.io/
 
 A quickstart example is available at https://github.com/containers/fetchit/blob/main/docs/quick_start.rst
+
+## Requirements
+
+**System Requirements:**
+- **Podman**: 4.4+ (4.9+ recommended for Quadlet support)
+- **Go**: 1.22+ (for building FetchIt)
+- **systemd**: 250+
+- **cgroup**: v2 (required for Quadlet method)
+
+**Operating Systems:**
+- RHEL 9+, CentOS Stream 9+
+- Fedora 39+
+- Ubuntu 22.04+
+- Debian 12+
+
+## What's New
+
+### Quadlet Method (New!)
+
+FetchIt now supports the **Quadlet method**, the modern approach for managing Podman containers with systemd integration. Quadlet is Podman's recommended systemd integration (available in Podman 4.4+) that replaces the deprecated `podman generate systemd` command.
+
+**Key Features:**
+- Declarative `.container`, `.volume`, and `.network` files
+- Automatic systemd service generation
+- Support for root and user (rootless) modes
+- Automatic service lifecycle management (enable, start, restart)
+- Git-based configuration tracking with FetchIt
+
+**Example Quadlet Configuration:**
+
+```yaml
+targetConfigs:
+- name: production-services
+  url: https://github.com/your-org/containers
+  branch: main
+  quadlet:
+  - name: web-services
+    targetPath: quadlet/
+    glob: "*.container"
+    schedule: "*/10 * * * *"
+    root: false      # User mode (no root required)
+    enable: true     # Enable services on boot
+    restart: true    # Restart on updates
+```
+
+**Example Quadlet File** (`nginx.container`):
+
+```ini
+[Unit]
+Description=Nginx Web Server
+After=network-online.target
+
+[Container]
+Image=docker.io/nginx:latest
+PublishPort=8080:80
+Volume=nginx-data.volume:/usr/share/nginx/html:Z
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+For comprehensive documentation, see:
+- **[Quadlet Guide](docs/quadlet.md)** - Complete Quadlet method documentation
+- **[Migration Guide](docs/migration.md)** - Migrate from Systemd to Quadlet
+- **[Examples](examples/quadlet/)** - Example Quadlet configurations
 
 ## Developing
 To develop and test changes of FetchIt, the FetchIt image can be built locally and then run on the development system.
