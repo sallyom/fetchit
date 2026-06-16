@@ -5,7 +5,6 @@ venv/
 results/*.png
 results/*.txt
 processed_data/*.dat
-vendor
 _output
 fetchit
 !fetchit/
